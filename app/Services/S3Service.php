@@ -102,6 +102,10 @@ class S3Service
      */
     public function temporaryUrl(string $key, int $minutes = 60): string
     {
+        // S3 SigV4 presigned URLs cannot exceed ~7 days; longer values throw and break the API.
+        $maxMinutes = 7 * 24 * 60 - 1;
+        $minutes    = min(max(1, $minutes), $maxMinutes);
+
         $cmd     = $this->client->getCommand('GetObject', [
             'Bucket' => $this->bucket,
             'Key'    => $key,

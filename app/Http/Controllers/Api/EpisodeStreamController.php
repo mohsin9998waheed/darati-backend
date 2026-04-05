@@ -31,8 +31,9 @@ class EpisodeStreamController extends Controller
             abort(404, 'Audio file not found.');
         }
 
+        // Keep ≤ 7 days (S3 presign limit); client can refresh by calling again.
         return response()->json([
-            'play_url' => $s3->temporaryUrl($episode->audio_path, 60 * 240),
+            'play_url' => $s3->temporaryUrl($episode->audio_path, 60 * 24 * 7 - 60),
         ]);
     }
 
