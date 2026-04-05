@@ -18,6 +18,9 @@ class EpisodeStreamController extends Controller
     public function signedAudio(Request $request, Episode $episode): JsonResponse
     {
         $episode->loadMissing('chapter.audiobook');
+        if (! $episode->chapter || ! $episode->chapter->audiobook) {
+            abort(404, 'Episode has no audiobook.');
+        }
         $book = $episode->chapter->audiobook;
         if ($book->status !== 'approved') {
             abort(404);
@@ -37,7 +40,7 @@ class EpisodeStreamController extends Controller
     {
         $s3 = app(S3Service::class);
 
-        if (! $s3->exists($episode->audio_path)) {
+        if (! $episode->audio_path || ! $s3->exists($episode->audio_path)) {
             abort(404, 'Audio file not found.');
         }
 
