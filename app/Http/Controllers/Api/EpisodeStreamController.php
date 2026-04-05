@@ -5,11 +5,34 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Episode;
 use App\Services\S3Service;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EpisodeStreamController extends Controller
 {
+    /**
+     * Return a time-limited S3 URL so the client can stream directly (low latency),
+     * instead of proxying bytes through PHP.
+     */
+    public function signedAudio(Request $request, Episode $episode): JsonResponse
+    {
+        $episode->loadMissing('chapter.audiobook');
+        $book = $episode->chapter->audiobook;
+        if ($book->status !== 'approved') {
+            abort(404);
+        }
+
+        $s3 = app(S3Service::class);
+        if (! $episode->audio_path || ! $s3->exists($episode->audio_path)) {
+            abort(404, 'Audio file not found.');
+        }
+
+        return response()->json([
+            'play_url' => $s3->temporaryUrl($episode->audio_path, 60 * 240),
+        ]);
+    }
+
     public function stream(Request $request, Episode $episode): StreamedResponse
     {
         $s3 = app(S3Service::class);

@@ -49,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/favorites', [FavoriteController::class, 'index']);
     Route::post('/favorites', [FavoriteController::class, 'store']);
     Route::delete('/favorites/{audiobook}', [FavoriteController::class, 'destroy']);
+
+    Route::get('/episodes/{episode}/signed-audio', [EpisodeStreamController::class, 'signedAudio']);
 });
 
 // Audio streaming (signed URL or token-based)
