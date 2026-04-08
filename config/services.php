@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'fcm' => [
+        'project_id'            => env('FCM_PROJECT_ID'),
+        'service_account_json'  => env('FIREBASE_SERVICE_ACCOUNT_JSON'),
+    ],
+
 ];

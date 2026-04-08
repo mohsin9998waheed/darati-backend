@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\EpisodeController;
 use App\Http\Controllers\Api\EpisodeStreamController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\ListenController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RatingController;
 use Illuminate\Support\Facades\Route;
 
@@ -51,6 +53,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/favorites/{audiobook}', [FavoriteController::class, 'destroy']);
 
     Route::get('/episodes/{episode}/signed-audio', [EpisodeStreamController::class, 'signedAudio']);
+
+    // Profile
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::post('/profile', [ProfileController::class, 'update']);
+    Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
+    Route::get('/profile/stats', [ProfileController::class, 'stats']);
+
+    // FCM device tokens
+    Route::post('/notifications/register-token', [NotificationController::class, 'registerToken']);
+    Route::delete('/notifications/deregister-token', [NotificationController::class, 'deregisterToken']);
 });
 
 // Audio streaming (signed URL or token-based)
