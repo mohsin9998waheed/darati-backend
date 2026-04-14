@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AudiobookController as AdminAudiobookController;
+use App\Http\Controllers\Debug\FirebaseHealthController;
 use App\Http\Controllers\Web\EpisodeStreamController as WebEpisodeStreamController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\CommentController as AdminCommentController;
@@ -15,6 +16,10 @@ use App\Http\Controllers\Artist\EpisodeController as ArtistEpisodeController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
+// Browser diagnostics for Firebase/FCM credentials and scheduler wiring.
+// In production, protect this with DEBUG_HEALTH_KEY query param.
+Route::get('/debug/firebase-health', FirebaseHealthController::class);
 
 // Audio streaming for web panels (session auth, Range-request aware)
 Route::get('/episodes/{episode}/play', [WebEpisodeStreamController::class, 'stream'])
