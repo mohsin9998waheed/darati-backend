@@ -110,5 +110,5 @@ Artisan::command('notify:continue-listening', function () {
     $this->info("Reminders sent: {$sent} / checked: {$checkedUsers}");
 })->purpose('Send daily continue-listening reminders to users');
 
-// Pakistan prime-time reminder (Asia/Karachi).
-Schedule::command('notify:continue-listening')->dailyAt('19:30')->timezone('Asia/Karachi');
+// Pakistan reminder schedule (Asia/Karachi).
+Schedule::command('notify:continue-listening')->dailyAt('17:10')->timezone('Asia/Karachi');
