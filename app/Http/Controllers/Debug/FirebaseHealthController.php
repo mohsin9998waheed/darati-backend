@@ -3,18 +3,29 @@
 namespace App\Http\Controllers\Debug;
 
 use App\Http\Controllers\Controller;
+use App\Models\Audiobook;
+use App\Models\DeviceToken;
+use App\Services\FcmService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 
 class FirebaseHealthController extends Controller
 {
-    public function __invoke(): JsonResponse
+    private function authorizeDebugKey(): ?JsonResponse
     {
         $key = (string) request()->query('key', '');
         $expected = (string) env('DEBUG_HEALTH_KEY', '');
         if (! app()->hasDebugModeEnabled() && ($expected === '' || ! hash_equals($expected, $key))) {
             return response()->json(['message' => 'Forbidden'], 403);
+        }
+        return null;
+    }
+
+    public function __invoke(): JsonResponse
+    {
+        if ($forbidden = $this->authorizeDebugKey()) {
+            return $forbidden;
         }
 
         $projectId = (string) config('services.fcm.project_id', '');
@@ -83,6 +94,70 @@ class FirebaseHealthController extends Controller
             'now_utc' => now()->toIso8601String(),
             'timezone' => config('app.timezone'),
         ], $healthy ? 200 : 500);
+    }
+
+    /**
+     * Browser endpoint to verify push delivery attempts now.
+     * Sends a single test push to the latest registered token.
+     */
+    public function sendTest(): JsonResponse
+    {
+        if ($forbidden = $this->authorizeDebugKey()) {
+            return $forbidden;
+        }
+
+        $latestToken = DeviceToken::query()->latest('updated_at')->first();
+        if (! $latestToken) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No device tokens found. Login from app first.',
+            ], 404);
+        }
+
+        $latestBook = Audiobook::query()->where('status', 'approved')->latest()->first();
+        $title = $latestBook?->title ?? 'Darati';
+        $image = $latestBook?->thumbnail_url;
+
+        $ok = app(FcmService::class)->sendToDevice(
+            $latestToken->token,
+            $title,
+            'New Arrival (debug test)',
+            [
+                'type' => 'debug_test',
+                'book_title' => $title,
+            ],
+            $image
+        );
+
+        return response()->json([
+            'ok' => $ok,
+            'token_suffix' => substr((string) $latestToken->token, -12),
+            'book_used' => $title,
+            'has_image' => ! empty($image),
+        ], $ok ? 200 : 500);
+    }
+
+    /**
+     * Quick status endpoint to check token availability and latest schedule text.
+     */
+    public function pushStatus(): JsonResponse
+    {
+        if ($forbidden = $this->authorizeDebugKey()) {
+            return $forbidden;
+        }
+
+        Artisan::call('schedule:list');
+        $scheduleList = trim(Artisan::output());
+
+        return response()->json([
+            'ok' => true,
+            'device_tokens_count' => DeviceToken::query()->count(),
+            'latest_token_updated_at' => optional(DeviceToken::query()->latest('updated_at')->first())->updated_at,
+            'approved_books_count' => Audiobook::query()->where('status', 'approved')->count(),
+            'schedule_contains_continue' => str_contains($scheduleList, 'notify:continue-listening'),
+            'schedule_contains_new_arrivals' => str_contains($scheduleList, 'notify:new-arrivals'),
+            'schedule_excerpt' => mb_substr($scheduleList, 0, 2000),
+        ]);
     }
 
     private function decodeServiceAccount(string $raw): ?array

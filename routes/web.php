@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Route;
 // Browser diagnostics for Firebase/FCM credentials and scheduler wiring.
 // In production, protect this with DEBUG_HEALTH_KEY query param.
 Route::get('/debug/firebase-health', FirebaseHealthController::class);
+Route::post('/debug/firebase-push-test', [FirebaseHealthController::class, 'sendTest']);
+Route::get('/debug/firebase-push-status', [FirebaseHealthController::class, 'pushStatus']);
 
 // Audio streaming for web panels (session auth, Range-request aware)
 Route::get('/episodes/{episode}/play', [WebEpisodeStreamController::class, 'stream'])
