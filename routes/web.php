@@ -14,13 +14,15 @@ use App\Http\Controllers\Artist\DashboardController as ArtistDashboardController
 use App\Http\Controllers\Artist\CommentModerationController as ArtistCommentModerationController;
 use App\Http\Controllers\Artist\EpisodeController as ArtistEpisodeController;
 use App\Http\Controllers\Auth\LoginController;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 // Browser diagnostics for Firebase/FCM credentials and scheduler wiring.
 // In production, protect this with DEBUG_HEALTH_KEY query param.
 Route::get('/debug/firebase-health', FirebaseHealthController::class);
-Route::post('/debug/firebase-push-test', [FirebaseHealthController::class, 'sendTest']);
+Route::match(['GET', 'POST'], '/debug/firebase-push-test', [FirebaseHealthController::class, 'sendTest'])
+    ->withoutMiddleware([ValidateCsrfToken::class]);
 Route::get('/debug/firebase-push-status', [FirebaseHealthController::class, 'pushStatus']);
 
 // Audio streaming for web panels (session auth, Range-request aware)
