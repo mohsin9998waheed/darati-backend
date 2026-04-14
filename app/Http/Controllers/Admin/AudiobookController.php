@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Audiobook;
+use App\Models\DeviceToken;
+use App\Services\FcmService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -50,6 +52,24 @@ class AudiobookController extends Controller
     public function approve(Audiobook $audiobook): RedirectResponse
     {
         $audiobook->update(['status' => 'approved', 'rejection_reason' => null]);
+
+        // Broadcast a "new book published" push to all registered devices.
+        $tokens = DeviceToken::query()->pluck('token')->all();
+        if (! empty($tokens)) {
+            app(FcmService::class)->sendToDevices(
+                $tokens,
+                $audiobook->title,
+                'New Arrival',
+                [
+                    'type' => 'new_book',
+                    'audiobook_id' => (string) $audiobook->id,
+                    'tagline' => 'New Arrival',
+                    'book_title' => $audiobook->title,
+                ],
+                $audiobook->thumbnail_url
+            );
+        }
+
         return back()->with('success', "'{$audiobook->title}' has been approved.");
     }
 

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Requires in .env / Railway environment variables:
  *   FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"...","private_key":"...","client_email":"..."}
- *   FCM_PROJECT_ID=darati-xxxxxxx
+ *   FCM_PROJECT_ID=darati
  */
 class FcmService
 {
@@ -26,24 +26,31 @@ class FcmService
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    public function sendToDevice(string $token, string $title, string $body, array $data = []): bool
+    public function sendToDevice(string $token, string $title, string $body, array $data = [], ?string $imageUrl = null): bool
     {
+        $notification = ['title' => $title, 'body' => $body];
+        $androidNotification = ['sound' => 'default'];
+        if ($imageUrl) {
+            $notification['image'] = $imageUrl;
+            $androidNotification['image'] = $imageUrl;
+        }
+
         return $this->sendV1([
             'token' => $token,
-            'notification' => ['title' => $title, 'body' => $body],
-            'android' => ['priority' => 'high', 'notification' => ['sound' => 'default']],
+            'notification' => $notification,
+            'android' => ['priority' => 'high', 'notification' => $androidNotification],
             'data' => $this->stringifyData(array_merge($data, ['click_action' => 'FLUTTER_NOTIFICATION_CLICK'])),
         ]);
     }
 
-    public function sendToDevices(array $tokens, string $title, string $body, array $data = []): bool
+    public function sendToDevices(array $tokens, string $title, string $body, array $data = [], ?string $imageUrl = null): bool
     {
         if (empty($tokens)) return true;
 
         $success = true;
         // FCM V1 only supports single token per message; iterate in parallel where possible.
         foreach ($tokens as $token) {
-            if (! $this->sendToDevice($token, $title, $body, $data)) {
+            if (! $this->sendToDevice($token, $title, $body, $data, $imageUrl)) {
                 $success = false;
             }
         }

@@ -26,6 +26,7 @@ class User extends Authenticatable
     ];
 
     protected $hidden = ['password', 'remember_token'];
+    protected $appends = ['avatar_url'];
 
     protected function casts(): array
     {
@@ -74,6 +75,11 @@ class User extends Authenticatable
     public function favorites(): HasMany
     {
         return $this->hasMany(Favorite::class);
+    }
+
+    public function deviceTokens(): HasMany
+    {
+        return $this->hasMany(DeviceToken::class);
     }
 
     public function getAvatarUrlAttribute(): string
