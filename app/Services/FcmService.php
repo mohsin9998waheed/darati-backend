@@ -22,6 +22,12 @@ class FcmService
         $this->projectId    = config('services.fcm.project_id', '');
         $raw                = config('services.fcm.service_account_json', '');
         $this->serviceAccount = $raw ? json_decode($raw, true) : null;
+        if (! $this->serviceAccount) {
+            Log::warning('FcmService.init.missing_service_account_json');
+        }
+        if (empty($this->projectId)) {
+            Log::warning('FcmService.init.missing_project_id');
+        }
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -81,9 +87,15 @@ class FcmService
                 Log::error('FcmService: push failed', [
                     'status' => $response->status(),
                     'body'   => $response->body(),
+                    'target_token_suffix' => substr((string) ($message['token'] ?? ''), -12),
                 ]);
                 return false;
             }
+
+            Log::info('FcmService: push sent', [
+                'target_token_suffix' => substr((string) ($message['token'] ?? ''), -12),
+                'message_name' => (string) $response->json('name', ''),
+            ]);
 
             return true;
         } catch (\Throwable $e) {
@@ -139,6 +151,11 @@ class FcmService
                 Log::error('FcmService: token exchange failed', ['body' => $res->body()]);
                 return null;
             }
+
+            Log::info('FcmService: access token acquired', [
+                'project_id' => $this->projectId,
+                'client_email' => (string) ($sa['client_email'] ?? ''),
+            ]);
 
             return $res->json('access_token');
         } catch (\Throwable $e) {
