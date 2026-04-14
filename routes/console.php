@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 use App\Models\DeviceToken;
+use App\Models\Audiobook;
 use App\Models\Listen;
 use App\Services\FcmService;
 
@@ -110,5 +111,67 @@ Artisan::command('notify:continue-listening', function () {
     $this->info("Reminders sent: {$sent} / checked: {$checkedUsers}");
 })->purpose('Send daily continue-listening reminders to users');
 
+Artisan::command('notify:new-arrivals', function () {
+    $fcm = app(FcmService::class);
+
+    $topBooks = Audiobook::query()
+        ->where('status', 'approved')
+        ->latest()
+        ->take(3)
+        ->get();
+
+    if ($topBooks->isEmpty()) {
+        Log::info('notify:new-arrivals.skipped_no_books');
+        $this->info('No approved books found.');
+        return;
+    }
+
+    $tokens = DeviceToken::query()->pluck('token')->all();
+    if (empty($tokens)) {
+        Log::info('notify:new-arrivals.skipped_no_tokens');
+        $this->info('No device tokens found.');
+        return;
+    }
+
+    $sent = 0;
+    foreach ($topBooks as $book) {
+        $ok = $fcm->sendToDevices(
+            $tokens,
+            $book->title,
+            'New Arrival',
+            [
+                'type' => 'new_book',
+                'audiobook_id' => (string) $book->id,
+                'tagline' => 'New Arrival',
+                'book_title' => $book->title,
+            ],
+            $book->thumbnail_url
+        );
+
+        if ($ok) {
+            $sent++;
+            Log::info('notify:new-arrivals.sent', [
+                'book_id' => $book->id,
+                'title' => $book->title,
+                'token_count' => count($tokens),
+            ]);
+        } else {
+            Log::warning('notify:new-arrivals.failed', [
+                'book_id' => $book->id,
+                'title' => $book->title,
+                'token_count' => count($tokens),
+            ]);
+        }
+    }
+
+    Log::info('notify:new-arrivals.completed', [
+        'books_attempted' => $topBooks->count(),
+        'books_sent_ok' => $sent,
+        'token_count' => count($tokens),
+    ]);
+    $this->info("New-arrival pushes attempted for {$topBooks->count()} books.");
+})->purpose('Send top-3 new-arrivals push notifications');
+
 // Pakistan reminder schedule (Asia/Karachi).
 Schedule::command('notify:continue-listening')->dailyAt('17:10')->timezone('Asia/Karachi');
+Schedule::command('notify:new-arrivals')->everyTwoMinutes()->timezone('Asia/Karachi');
