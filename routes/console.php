@@ -174,4 +174,4 @@ Artisan::command('notify:new-arrivals', function () {
 
 // Pakistan reminder schedule (Asia/Karachi).
 Schedule::command('notify:continue-listening')->dailyAt('17:10')->timezone('Asia/Karachi');
-Schedule::command('notify:new-arrivals')->everyTwoMinutes()->timezone('Asia/Karachi');
+Schedule::command('notify:new-arrivals')->cron('*/8 * * * *')->timezone('Asia/Karachi');
