@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class UserController extends Controller
@@ -28,6 +30,27 @@ class UserController extends Controller
         $users = $query->withCount('audiobooks')->latest()->paginate(20)->withQueryString();
 
         return view('admin.users.index', compact('users'));
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'role' => ['required', 'in:artist,listener'],
+            'password' => ['required', 'confirmed', Password::min(8)],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'role' => $data['role'],
+            'password' => Hash::make($data['password']),
+            'is_active' => (bool) ($data['is_active'] ?? true),
+        ]);
+
+        return back()->with('success', 'User created successfully.');
     }
 
     public function toggleActive(User $user): RedirectResponse

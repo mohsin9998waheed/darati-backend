@@ -2,6 +2,77 @@
 @section('title', 'Users')
 @section('content')
 <div class="space-y-4">
+    @if ($errors->any())
+        <div class="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+            <ul class="list-disc list-inside space-y-1">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <h3 class="text-sm font-semibold text-gray-800 mb-3">Create User</h3>
+        <form method="POST" action="{{ route('admin.users.store') }}" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+            @csrf
+            <input
+                type="text"
+                name="name"
+                value="{{ old('name') }}"
+                placeholder="Full name"
+                class="lg:col-span-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+            >
+            <input
+                type="email"
+                name="email"
+                value="{{ old('email') }}"
+                placeholder="Email"
+                class="lg:col-span-2 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+            >
+            <select
+                name="role"
+                class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+            >
+                <option value="listener" {{ old('role') === 'listener' ? 'selected' : '' }}>Listener</option>
+                <option value="artist" {{ old('role') === 'artist' ? 'selected' : '' }}>Artist</option>
+            </select>
+            <input
+                type="password"
+                name="password"
+                placeholder="Password (min 8)"
+                class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+            >
+            <input
+                type="password"
+                name="password_confirmation"
+                placeholder="Confirm password"
+                class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+            >
+            <label class="flex items-center gap-2 text-sm text-gray-600">
+                <input type="hidden" name="is_active" value="0">
+                <input
+                    type="checkbox"
+                    name="is_active"
+                    value="1"
+                    class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    {{ old('is_active', '1') ? 'checked' : '' }}
+                >
+                Active
+            </label>
+            <div class="md:col-span-2 lg:col-span-6 flex justify-end">
+                <button type="submit" class="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700">
+                    Create User
+                </button>
+            </div>
+        </form>
+    </div>
+
     <div class="flex flex-col sm:flex-row gap-3">
         <form method="GET" class="flex gap-2 flex-1">
             <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by name or email..." class="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
