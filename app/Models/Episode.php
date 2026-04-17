@@ -12,15 +12,32 @@ class Episode extends Model
         'chapter_id',
         'title',
         'audio_path',
+        'raw_audio_path',
         'duration_seconds',
         'file_size',
         'order',
         'is_preview',
+        'processing_status',
     ];
 
     protected function casts(): array
     {
         return ['is_preview' => 'boolean'];
+    }
+
+    public function isProcessing(): bool
+    {
+        return in_array($this->processing_status, ['queued', 'processing'], true);
+    }
+
+    public function isFailed(): bool
+    {
+        return $this->processing_status === 'failed';
+    }
+
+    public function isReady(): bool
+    {
+        return $this->processing_status === 'ready';
     }
 
     public function chapter(): BelongsTo

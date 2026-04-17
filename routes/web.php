@@ -89,6 +89,7 @@ Route::prefix('artist')->name('artist.')->middleware(['auth', 'role:artist'])->g
     Route::post('/chapters/{chapter}/episodes', [ArtistEpisodeController::class, 'store'])->name('episodes.store');
     Route::put('/episodes/{episode}', [ArtistEpisodeController::class, 'update'])->name('episodes.update');
     Route::delete('/episodes/{episode}', [ArtistEpisodeController::class, 'destroy'])->name('episodes.destroy');
+    Route::get('/episodes/{episode}/status', [ArtistEpisodeController::class, 'status'])->name('episodes.status');
 
     Route::get('/analytics', [ArtistAnalyticsController::class, 'index'])->name('analytics.index');
     Route::get('/analytics/{audiobook}', [ArtistAnalyticsController::class, 'show'])->name('analytics.show');

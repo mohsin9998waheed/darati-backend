@@ -156,9 +156,26 @@
                                 <p class="text-sm font-medium text-gray-800 truncate">
                                     <span class="text-gray-400 font-normal">{{ $episode->order }}.</span> {{ $episode->title }}
                                 </p>
-                                <div class="flex items-center gap-2 mt-0.5">
+                                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
                                     @if ($episode->is_preview)
                                         <span class="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-medium">Preview</span>
+                                    @endif
+                                    @if ($episode->processing_status === 'queued')
+                                        <span class="episode-status-badge text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1"
+                                              data-episode-id="{{ $episode->id }}"
+                                              data-status-url="{{ route('artist.episodes.status', $episode) }}">
+                                            <svg class="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-dasharray="40" stroke-dashoffset="15" stroke-linecap="round"/></svg>
+                                            Queued
+                                        </span>
+                                    @elseif ($episode->processing_status === 'processing')
+                                        <span class="episode-status-badge text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1"
+                                              data-episode-id="{{ $episode->id }}"
+                                              data-status-url="{{ route('artist.episodes.status', $episode) }}">
+                                            <svg class="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-dasharray="40" stroke-dashoffset="15" stroke-linecap="round"/></svg>
+                                            Optimising…
+                                        </span>
+                                    @elseif ($episode->processing_status === 'failed')
+                                        <span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">⚠ Transcode failed</span>
                                     @endif
                                     @if ($episode->duration_seconds > 0)
                                         <span class="text-xs text-gray-400">{{ $episode->duration_formatted }}</span>
@@ -197,8 +214,8 @@
                                         <input type="text" name="title" required placeholder="e.g. Part 1 – Introduction" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">Audio file * <span class="text-gray-400">(mp3/mpeg/wav/ogg/m4a, max 200 MB)</span></label>
-                                        <input type="file" name="audio_file" accept=".mp3,.mpeg,.wav,.ogg,.m4a,audio/mpeg" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Audio file * <span class="text-gray-400">(mp3/wav/ogg/m4a, up to 512 MB — large files are auto-optimised)</span></label>
+                                        <input type="file" name="audio_file" accept=".mp3,.mpeg,.wav,.ogg,.m4a,audio/mpeg,audio/*" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-4">
@@ -384,4 +401,44 @@
         </div>
     </div>
 </div>
+@push('scripts')
+<script>
+(function () {
+    // Poll episodes that are still processing (queued or processing state)
+    const badges = document.querySelectorAll('.episode-status-badge[data-status-url]');
+    if (badges.length === 0) return;
+
+    function pollBadge(badge) {
+        const url = badge.dataset.statusUrl;
+        const interval = setInterval(async function () {
+            try {
+                const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json();
+
+                if (data.processing_status === 'ready') {
+                    clearInterval(interval);
+                    // Replace badge with duration text
+                    const duration = data.duration_seconds > 0
+                        ? Math.floor(data.duration_seconds / 60) + ':' + String(data.duration_seconds % 60).padStart(2, '0')
+                        : null;
+                    badge.outerHTML = duration
+                        ? '<span class="text-xs text-gray-400">' + duration + '</span>'
+                        : '<span class="text-xs text-green-600 font-medium">✓ Ready</span>';
+                } else if (data.processing_status === 'processing') {
+                    badge.className = 'episode-status-badge text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1';
+                    badge.innerHTML = '<svg class="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-dasharray="40" stroke-dashoffset="15" stroke-linecap="round"/></svg> Optimising…';
+                } else if (data.processing_status === 'failed') {
+                    clearInterval(interval);
+                    badge.outerHTML = '<span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">⚠ Failed</span>';
+                }
+            } catch (e) {
+                // Network error — keep polling
+            }
+        }, 4000); // poll every 4 seconds
+    }
+
+    badges.forEach(pollBadge);
+})();
+</script>
+@endpush
 @endsection

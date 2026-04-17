@@ -127,5 +127,6 @@
 <x-audio-player />
 <x-loader />
 <script src="//unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+@stack('scripts')
 </body>
 </html>

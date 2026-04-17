@@ -148,6 +148,24 @@ class S3Service
     }
 
     /**
+     * Upload a local file path to S3 (used after transcoding to re-upload the processed file).
+     * Returns the S3 key.
+     */
+    public function uploadFromLocalPath(string $localPath, string $folder, string $extension = 'mp3', string $contentType = 'audio/mpeg'): string
+    {
+        $key = $folder . '/' . Str::uuid() . '.' . $extension;
+
+        $this->client->putObject([
+            'Bucket'      => $this->bucket,
+            'Key'         => $key,
+            'Body'        => fopen($localPath, 'rb'),
+            'ContentType' => $contentType,
+        ]);
+
+        return $key;
+    }
+
+    /**
      * Open a readable PHP stream for the given key (used for audio streaming).
      * Supports Range requests efficiently via AWS SDK streaming.
      *
