@@ -16,7 +16,7 @@ class EpisodeController extends Controller
         $data = $request->validate([
             'chapter_id'  => ['required', 'exists:chapters,id'],
             'title'       => ['required', 'string', 'max:200'],
-            'audio_file'  => ['required', 'file', 'mimes:mp3,wav,ogg,m4a', 'max:204800'],
+            'audio_file'  => ['required', 'file', 'mimes:mp3,mpeg,wav,ogg,m4a', 'mimetypes:audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/ogg,audio/mp4,audio/x-m4a', 'max:204800'],
             'is_preview'  => ['boolean'],
         ]);
 

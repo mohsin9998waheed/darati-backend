@@ -197,8 +197,8 @@
                                         <input type="text" name="title" required placeholder="e.g. Part 1 – Introduction" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">Audio file * <span class="text-gray-400">(mp3/wav/ogg/m4a, max 200 MB)</span></label>
-                                        <input type="file" name="audio_file" accept=".mp3,.wav,.ogg,.m4a" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Audio file * <span class="text-gray-400">(mp3/mpeg/wav/ogg/m4a, max 200 MB)</span></label>
+                                        <input type="file" name="audio_file" accept=".mp3,.mpeg,.wav,.ogg,.m4a,audio/mpeg" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-4">
