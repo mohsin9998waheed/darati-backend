@@ -14,7 +14,13 @@ class AudiobookController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = Audiobook::with('artist', 'category');
+        $query = Audiobook::with('artist', 'category')
+            ->withCount([
+                'episodes',
+                'episodes as processing_episodes_count' => function ($q) {
+                    $q->whereIn('processing_status', ['queued', 'processing']);
+                },
+            ]);
 
         if ($status = $request->get('status')) {
             $query->where('status', $status);
@@ -35,15 +41,23 @@ class AudiobookController extends Controller
     {
         $audiobook->load('artist', 'category', 'chapters.episodes');
         $audiobook->loadCount(['favorites', 'ratings', 'comments']);
-        $totalEpisodes = $audiobook->chapters->sum(fn ($c) => $c->episodes->count());
-        $totalDuration = $audiobook->chapters->sum(fn ($c) => $c->episodes->sum('duration_seconds'));
-        $recentRatings = $audiobook->ratings()->with('user:id,name')->latest()->take(50)->get();
+
+        $totalEpisodes    = $audiobook->chapters->sum(fn ($c) => $c->episodes->count());
+        $totalDuration    = $audiobook->chapters->sum(fn ($c) => $c->episodes->sum('duration_seconds'));
+        $listenHours      = round($audiobook->total_play_seconds / 3600, 1);
+        $processingCount  = $audiobook->chapters->sum(
+            fn ($c) => $c->episodes->filter(fn ($e) => in_array($e->processing_status, ['queued', 'processing']))->count()
+        );
+
+        $recentRatings  = $audiobook->ratings()->with('user:id,name')->latest()->take(50)->get();
         $recentComments = $audiobook->comments()->with('user:id,name,email')->latest()->take(50)->get();
 
         return view('admin.audiobooks.show', compact(
             'audiobook',
             'totalEpisodes',
             'totalDuration',
+            'listenHours',
+            'processingCount',
             'recentRatings',
             'recentComments',
         ));
