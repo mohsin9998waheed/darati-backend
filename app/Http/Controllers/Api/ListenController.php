@@ -40,9 +40,13 @@ class ListenController extends Controller
         $completed = $episode->duration_seconds > 0
             && $newProgress >= (int) floor($episode->duration_seconds * 0.90);
 
+        // Completion is sticky — once a user marks an episode done, never un-done it
+        // (so seeking back to 0 doesn't wipe the completion flag or re-count a listen).
+        $shouldBeCompleted = $completed || $wasCompleted;
+
         Listen::updateOrCreate(
             ['user_id' => Auth::id(), 'episode_id' => $data['episode_id']],
-            ['progress_seconds' => $newProgress, 'completed' => $completed]
+            ['progress_seconds' => $newProgress, 'completed' => $shouldBeCompleted]
         );
 
         // Approximate listening time: positive progress delta, capped per request.
@@ -65,8 +69,6 @@ class ListenController extends Controller
             $countListen = $completed && ! $wasCompleted;
         } elseif (! $wasCompleted && $newProgress >= 60) {
             $countListen = true;
-            Listen::where('user_id', Auth::id())->where('episode_id', $data['episode_id'])
-                ->update(['completed' => true]);
         }
         if ($countListen) {
             Audiobook::where('id', $audiobookId)->increment('total_listens');

@@ -8,11 +8,12 @@ use App\Models\Audiobook;
 use App\Models\Favorite;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 
 class FavoriteController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(): AnonymousResourceCollection
     {
         $userId = Auth::id();
         $audiobookIds = Favorite::where('user_id', $userId)->pluck('audiobook_id');
@@ -23,7 +24,7 @@ class FavoriteController extends Controller
             ->latest()
             ->paginate(50);
 
-        return response()->json(AudiobookResource::collection($audiobooks));
+        return AudiobookResource::collection($audiobooks);
     }
 
     public function store(Request $request): JsonResponse

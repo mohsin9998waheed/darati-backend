@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AudiobookController as AdminAudiobookController;
+use App\Http\Controllers\Admin\ListenerAnalyticsController as AdminListenerAnalyticsController;
 use App\Http\Controllers\Debug\FirebaseHealthController;
 use App\Http\Controllers\Web\EpisodeStreamController as WebEpisodeStreamController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
@@ -68,6 +69,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('/comments', [AdminCommentController::class, 'index'])->name('comments.index');
     Route::patch('/comments/{comment}/flag', [AdminCommentController::class, 'flag'])->name('comments.flag');
     Route::delete('/comments/{comment}', [AdminCommentController::class, 'destroy'])->name('comments.destroy');
+
+    Route::get('/analytics/listeners', [AdminListenerAnalyticsController::class, 'index'])->name('analytics.listeners');
+    Route::get('/analytics/listeners/{audiobook}', [AdminListenerAnalyticsController::class, 'bookDetail'])->name('analytics.listeners.book');
 });
 
 // Artist Panel
