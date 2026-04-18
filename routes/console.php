@@ -175,3 +175,10 @@ Artisan::command('notify:new-arrivals', function () {
 // Pakistan reminder schedule (Asia/Karachi).
 Schedule::command('notify:continue-listening')->dailyAt('17:10')->timezone('Asia/Karachi');
 Schedule::command('notify:new-arrivals')->cron('*/8 * * * *')->timezone('Asia/Karachi');
+
+// Queue fallback for environments where a dedicated queue worker process
+// is not available (e.g. no shell access on Railway).
+// This drains pending jobs each minute and exits when the queue is empty.
+Schedule::command('queue:work --stop-when-empty --tries=3 --timeout=600 --sleep=1')
+    ->everyMinute()
+    ->withoutOverlapping();
