@@ -13,6 +13,7 @@ class AudiobookResource extends JsonResource
             'id'            => $this->id,
             'title'         => $this->title,
             'description'   => $this->description,
+            'author_name'   => $this->author_name,
             'thumbnail_url' => $this->thumbnail_url,
             'language'      => $this->language,
             'status'        => $this->status,

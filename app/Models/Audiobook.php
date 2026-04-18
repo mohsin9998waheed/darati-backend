@@ -14,6 +14,7 @@ class Audiobook extends Model
         'title',
         'description',
         'thumbnail',
+        'author_name',
         'artist_id',
         'category_id',
         'language',
@@ -24,6 +25,8 @@ class Audiobook extends Model
         'avg_rating',
         'is_trending',
     ];
+
+    protected $appends = ['thumbnail_url'];
 
     protected function casts(): array
     {

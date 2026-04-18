@@ -23,7 +23,11 @@ class AudiobookController extends Controller
         }
 
         if ($search = $request->get('search')) {
-            $query->where('title', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('author_name', 'like', "%{$search}%")
+                  ->orWhereHas('artist', fn ($a) => $a->where('name', 'like', "%{$search}%"));
+            });
         }
 
         if ($category = $request->get('category')) {

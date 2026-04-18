@@ -9,7 +9,6 @@ use App\Models\Listen;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Schema;
 
 class ListenController extends Controller
 {
@@ -54,13 +53,22 @@ class ListenController extends Controller
                 $remaining = max(0, $episode->duration_seconds - $oldProgress);
                 $credited = min($credited, $remaining);
             }
-            if ($credited > 0 && Schema::hasColumn('audiobooks', 'total_play_seconds')) {
+            if ($credited > 0) {
                 Audiobook::where('id', $audiobookId)->increment('total_play_seconds', $credited);
             }
         }
 
-        // Count one "listen" per user+episode the first time they reach ~complete.
-        if ($completed && ! $wasCompleted) {
+        // Count one "listen" per user+episode the first time they reach ~complete
+        // or once they have played at least 60 seconds (handles unknown duration).
+        $countListen = false;
+        if ($episode->duration_seconds > 0) {
+            $countListen = $completed && ! $wasCompleted;
+        } elseif (! $wasCompleted && $newProgress >= 60) {
+            $countListen = true;
+            Listen::where('user_id', Auth::id())->where('episode_id', $data['episode_id'])
+                ->update(['completed' => true]);
+        }
+        if ($countListen) {
             Audiobook::where('id', $audiobookId)->increment('total_listens');
         }
 

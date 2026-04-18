@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Artist;
 use App\Http\Controllers\Controller;
 use App\Jobs\TranscodeAudioJob;
 use App\Models\Chapter;
+use App\Models\DeviceToken;
 use App\Models\Episode;
+use App\Services\FcmService;
 use App\Services\S3Service;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -87,7 +89,42 @@ class EpisodeController extends Controller
             'size_mb'   => round($file->getSize() / 1_048_576, 1),
         ]);
 
+        // Notify all users about the new episode
+        $this->notifyNewEpisode($chapter, $episode);
+
         return back()->with('success', 'Episode uploaded! Audio is being optimised in the background — it will be ready in a few minutes.');
+    }
+
+    private function notifyNewEpisode(Chapter $chapter, Episode $episode): void
+    {
+        try {
+            $book = $chapter->audiobook;
+            $tokens = DeviceToken::pluck('token')->all();
+            if (empty($tokens)) {
+                return;
+            }
+
+            $fcm = app(FcmService::class);
+            $fcm->sendToDevices(
+                $tokens,
+                $book->title,
+                "New Episode: {$episode->title}",
+                [
+                    'type'         => 'new_episode',
+                    'audiobook_id' => (string) $book->id,
+                    'episode_id'   => (string) $episode->id,
+                ],
+                $book->thumbnail_url
+            );
+
+            Log::info("Episode upload notification sent", [
+                'audiobook_id' => $book->id,
+                'episode_id'   => $episode->id,
+                'token_count'  => count($tokens),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("Episode upload notification failed: " . $e->getMessage());
+        }
     }
 
     public function update(Request $request, Episode $episode): RedirectResponse

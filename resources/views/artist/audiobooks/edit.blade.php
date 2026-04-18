@@ -27,6 +27,10 @@
                 <input type="text" name="title" value="{{ old('title', $audiobook->title) }}" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" required>
             </div>
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Author Name</label>
+                <input type="text" name="author_name" value="{{ old('author_name', $audiobook->author_name) }}" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="e.g. Dr. Waseem Barelvi">
+            </div>
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea name="description" rows="4" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none">{{ old('description', $audiobook->description) }}</textarea>
             </div>
@@ -44,6 +48,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Language</label>
                     <select name="language" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                         <option value="en" {{ old('language', $audiobook->language) == 'en' ? 'selected' : '' }}>English</option>
+                        <option value="ur" {{ old('language', $audiobook->language) == 'ur' ? 'selected' : '' }}>Urdu (اردو)</option>
                         <option value="ar" {{ old('language', $audiobook->language) == 'ar' ? 'selected' : '' }}>Arabic</option>
                         <option value="fr" {{ old('language', $audiobook->language) == 'fr' ? 'selected' : '' }}>French</option>
                         <option value="es" {{ old('language', $audiobook->language) == 'es' ? 'selected' : '' }}>Spanish</option>

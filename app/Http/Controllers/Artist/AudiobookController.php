@@ -75,6 +75,7 @@ class AudiobookController extends Controller
 
         $data = $request->validate([
             'title'       => ['required', 'string', 'max:200'],
+            'author_name' => ['nullable', 'string', 'max:200'],
             'description' => ['nullable', 'string', 'max:2000'],
             'category_id' => ['nullable', 'exists:categories,id'],
             'language'    => ['required', 'string', 'max:10'],
@@ -132,6 +133,7 @@ class AudiobookController extends Controller
 
         $data = $request->validate([
             'title'       => ['required', 'string', 'max:200'],
+            'author_name' => ['nullable', 'string', 'max:200'],
             'description' => ['nullable', 'string', 'max:2000'],
             'category_id' => ['nullable', 'exists:categories,id'],
             'language'    => ['required', 'string', 'max:10'],
