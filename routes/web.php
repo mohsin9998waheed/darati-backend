@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AudiobookController as AdminAudiobookController;
+use App\Http\Controllers\Admin\BannerController as AdminBannerController;
 use App\Http\Controllers\Admin\ListenerAnalyticsController as AdminListenerAnalyticsController;
 use App\Http\Controllers\Debug\FirebaseHealthController;
 use App\Http\Controllers\Web\EpisodeStreamController as WebEpisodeStreamController;
@@ -72,6 +73,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     Route::get('/analytics/listeners', [AdminListenerAnalyticsController::class, 'index'])->name('analytics.listeners');
     Route::get('/analytics/listeners/{audiobook}', [AdminListenerAnalyticsController::class, 'bookDetail'])->name('analytics.listeners.book');
+
+    Route::get('/banners', [AdminBannerController::class, 'index'])->name('banners.index');
+    Route::get('/banners/create', [AdminBannerController::class, 'create'])->name('banners.create');
+    Route::post('/banners', [AdminBannerController::class, 'store'])->name('banners.store');
+    Route::patch('/banners/{banner}/toggle-active', [AdminBannerController::class, 'toggleActive'])->name('banners.toggle-active');
+    Route::delete('/banners/{banner}', [AdminBannerController::class, 'destroy'])->name('banners.destroy');
 });
 
 // Artist Panel

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AudiobookController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BannerController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ChapterController;
 use App\Http\Controllers\Api\CommentController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\EpisodeController;
 use App\Http\Controllers\Api\EpisodeStreamController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\ListenController;
+use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RatingController;
@@ -24,6 +26,7 @@ Route::get('/audiobooks/{audiobook}', [AudiobookController::class, 'show']);
 Route::get('/audiobooks/{audiobook}/chapters', [ChapterController::class, 'index']);
 Route::get('/comments/{audiobook}', [CommentController::class, 'index']);
 Route::get('/categories', [CategoryController::class, 'index']);
+Route::get('/banners', [BannerController::class, 'index']);
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -63,6 +66,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // FCM device tokens
     Route::post('/notifications/register-token', [NotificationController::class, 'registerToken']);
     Route::delete('/notifications/deregister-token', [NotificationController::class, 'deregisterToken']);
+
+    // Location detection (fire-and-forget)
+    Route::post('/location', [LocationController::class, 'store']);
 });
 
 // Audio streaming (signed URL or token-based)

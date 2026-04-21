@@ -23,6 +23,8 @@ class User extends Authenticatable
         'avatar',
         'is_active',
         'bio',
+        'city',
+        'country',
     ];
 
     protected $hidden = ['password', 'remember_token'];

@@ -50,10 +50,21 @@ class ListenerAnalyticsController extends Controller
             ->take(30)
             ->get();
 
+        // City analytics — group users by city where city is set
+        $cityStats = User::query()
+            ->where('role', 'user')
+            ->whereNotNull('city')
+            ->select('city', 'country', DB::raw('count(*) as user_count'))
+            ->groupBy('city', 'country')
+            ->orderByDesc('user_count')
+            ->take(30)
+            ->get();
+
         return view('admin.analytics.listeners', compact(
             'topListeners',
             'recentActivity',
             'bookStats',
+            'cityStats',
         ));
     }
 

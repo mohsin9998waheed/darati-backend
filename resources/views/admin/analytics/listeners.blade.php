@@ -168,5 +168,38 @@
             </table>
         </div>
     </div>
+
+    {{-- ── City Analytics ── --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+            <span class="text-lg">🌍</span>
+            <h2 class="text-base font-semibold text-gray-900">Listeners by City</h2>
+            <span class="text-xs text-gray-400 ml-2">(based on detected location)</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                    <tr>
+                        <th class="px-6 py-3 text-left">#</th>
+                        <th class="px-6 py-3 text-left">City</th>
+                        <th class="px-6 py-3 text-left">Country</th>
+                        <th class="px-6 py-3 text-right">Users</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @forelse ($cityStats as $i => $row)
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-3 text-gray-400 text-xs">{{ $i + 1 }}</td>
+                        <td class="px-6 py-3 font-medium text-gray-900">{{ $row->city ?? '—' }}</td>
+                        <td class="px-6 py-3 text-gray-500">{{ $row->country ?? '—' }}</td>
+                        <td class="px-6 py-3 text-right font-semibold text-indigo-700">{{ number_format($row->user_count) }}</td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="4" class="px-6 py-8 text-center text-gray-400">No location data yet. Cities appear as users open the app.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 @endsection
