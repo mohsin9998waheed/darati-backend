@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ArtistController;
 use App\Http\Controllers\Api\AudiobookController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BannerController;
@@ -27,6 +28,8 @@ Route::get('/audiobooks/{audiobook}/chapters', [ChapterController::class, 'index
 Route::get('/comments/{audiobook}', [CommentController::class, 'index']);
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/banners', [BannerController::class, 'index']);
+Route::get('/artists', [ArtistController::class, 'index']);
+Route::get('/artists/{id}/books', [ArtistController::class, 'books']);
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
