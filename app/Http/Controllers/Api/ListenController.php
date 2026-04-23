@@ -62,16 +62,20 @@ class ListenController extends Controller
             }
         }
 
-        // Count one "listen" per user+episode the first time they reach ~complete
-        // or once they have played at least 60 seconds (handles unknown duration).
-        $countListen = false;
-        if ($episode->duration_seconds > 0) {
-            $countListen = $completed && ! $wasCompleted;
-        } elseif (! $wasCompleted && $newProgress >= 60) {
-            $countListen = true;
-        }
-        if ($countListen) {
-            Audiobook::where('id', $audiobookId)->increment('total_listens');
+        // Count exactly one listen per user per audiobook — triggered the very first
+        // time a user sends any listen event for any episode in that audiobook.
+        // We check $existing (the pre-save record): if it's null, this is the first
+        // progress event ever for this user+episode.  We then also confirm they have
+        // no previous Listen rows for any other episode in the same audiobook.
+        if ($existing === null) {
+            $alreadyListened = Listen::where('user_id', Auth::id())
+                ->where('episode_id', '!=', $data['episode_id'])
+                ->whereHas('episode.chapter', fn ($q) => $q->where('audiobook_id', $audiobookId))
+                ->exists();
+
+            if (! $alreadyListened) {
+                Audiobook::where('id', $audiobookId)->increment('total_listens');
+            }
         }
 
         $listen = Listen::where('user_id', Auth::id())
