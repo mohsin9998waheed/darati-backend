@@ -38,11 +38,10 @@ class ProfileController extends Controller
 
         if ($request->hasFile('avatar')) {
             $s3 = app(S3Service::class);
-            // Remove old avatar to free S3 space
             if ($user->avatar) {
                 $s3->delete($user->avatar);
             }
-            $data['avatar'] = $s3->upload($request->file('avatar'), 'avatars');
+            $data['avatar'] = $s3->uploadAvatar($request->file('avatar'));
         }
 
         if (array_key_exists('bio', $data) && $data['bio'] === null) {

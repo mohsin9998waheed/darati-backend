@@ -38,12 +38,19 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 Analytics
             </a>
+            <a href="{{ route('artist.profile.show') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('artist.profile*') ? 'bg-purple-600 text-white' : 'text-white/60 hover:text-white hover:bg-white/10' }}">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                My Profile
+            </a>
         </nav>
         <div class="px-4 py-4 border-t border-white/10">
             <div class="flex items-center gap-3">
-                <img src="{{ auth()->user()->avatar_url }}" alt="" class="w-9 h-9 rounded-full object-cover">
+                <a href="{{ route('artist.profile.show') }}" class="shrink-0">
+                    <img src="{{ auth()->user()->avatar_url }}" alt=""
+                         class="w-9 h-9 rounded-full object-cover ring-2 ring-white/20 hover:ring-purple-400 transition">
+                </a>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-white truncate">{{ auth()->user()->name }}</p>
+                    <a href="{{ route('artist.profile.show') }}" class="text-sm font-medium text-white truncate hover:text-purple-300 transition block">{{ auth()->user()->name }}</a>
                     <p class="text-xs text-white/40 truncate">Artist</p>
                 </div>
                 <form method="POST" action="{{ route('logout') }}" data-no-loader>

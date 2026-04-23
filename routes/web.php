@@ -15,6 +15,7 @@ use App\Http\Controllers\Artist\ChapterController as ArtistChapterController;
 use App\Http\Controllers\Artist\DashboardController as ArtistDashboardController;
 use App\Http\Controllers\Artist\CommentModerationController as ArtistCommentModerationController;
 use App\Http\Controllers\Artist\EpisodeController as ArtistEpisodeController;
+use App\Http\Controllers\Artist\ProfileController as ArtistProfileController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Auth;
@@ -106,4 +107,8 @@ Route::prefix('artist')->name('artist.')->middleware(['auth', 'role:artist'])->g
     Route::get('/analytics/{audiobook}', [ArtistAnalyticsController::class, 'show'])->name('analytics.show');
 
     Route::patch('/comments/{comment}/toggle-flag', [ArtistCommentModerationController::class, 'toggleFlag'])->name('comments.toggle-flag');
+
+    Route::get('/profile', [ArtistProfileController::class, 'show'])->name('profile.show');
+    Route::post('/profile', [ArtistProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/change-password', [ArtistProfileController::class, 'changePassword'])->name('profile.change-password');
 });

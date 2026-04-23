@@ -55,6 +55,29 @@ class S3Service
     }
 
     /**
+     * Upload an avatar to the "avatars/" folder with long-lived public caching.
+     * Avatars are non-sensitive profile images, so they use public stable URLs
+     * (Cache-Control: public, max-age=604800) instead of pre-signed URLs.
+     * Requires the bucket policy to allow s3:GetObject for avatars/*.
+     */
+    public function uploadAvatar(UploadedFile $file): string
+    {
+        $ext  = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+        $key  = 'avatars/' . Str::uuid() . '.' . $ext;
+        $mime = $file->getMimeType() ?? 'image/jpeg';
+
+        $this->client->putObject([
+            'Bucket'       => $this->bucket,
+            'Key'          => $key,
+            'Body'         => fopen($file->getRealPath(), 'rb'),
+            'ContentType'  => $mime,
+            'CacheControl' => 'public, max-age=604800, immutable',
+        ]);
+
+        return $key;
+    }
+
+    /**
      * Upload raw content string to S3 without ACL.
      */
     public function put(string $key, string $content, string $contentType = 'text/plain'): string
