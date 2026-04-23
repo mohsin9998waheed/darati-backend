@@ -87,11 +87,10 @@ class User extends Authenticatable
     public function getAvatarUrlAttribute(): string
     {
         if ($this->avatar) {
-            // Avatars are non-sensitive profile images stored under avatars/.
-            // We use a stable public URL (requires bucket policy: s3:GetObject on avatars/*).
-            // This lets browsers and CDNs cache the image for up to 7 days, which is
-            // critical for fast loading in mobile app lists (CachedNetworkImage, etc.).
-            return app(S3Service::class)->url($this->avatar);
+            // Keep avatar delivery compatible with private buckets:
+            // serve a signed URL by default so images always load even when
+            // Block Public Access is enabled on S3.
+            return app(S3Service::class)->temporaryUrl($this->avatar, 60 * 24); // 24 hours
         }
         $initial   = strtoupper(substr($this->name, 0, 1));
         $encodedName = urlencode($this->name);
