@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Episode;
 use App\Services\S3Service;
+use App\Jobs\SendPushNotificationJob;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -82,13 +83,23 @@ class TranscodeAudioJob implements ShouldQueue
             // ── 3. Upload final file to S3 ────────────────────────────────
             $pathToUpload = $transcoded ? $localOut : $localRaw;
             $finalExt     = $transcoded ? 'mp3'     : $ext;
-            $finalMime    = 'audio/mpeg';
+            $finalMime    = $transcoded ? 'audio/mpeg' : $this->mimeForExtension($finalExt);
 
             Log::info("TranscodeAudioJob[{$this->episodeId}]: uploading final audio to S3");
             $finalKey = $s3->uploadFromLocalPath($pathToUpload, 'audio', $finalExt, $finalMime);
 
             // ── 4. Get duration ───────────────────────────────────────────
             $duration = $this->getDuration($pathToUpload, $ffmpegBin);
+
+            // ── 4.5. Validate output before publishing ────────────────────
+            // This is the gate that prevents corrupt or truncated audio from
+            // ever reaching listeners. Throws on failure → caught below → 'failed'.
+            $this->validateAudioOutput(
+                path:       $pathToUpload,
+                duration:   $duration,
+                transcoded: $transcoded,
+                episodeId:  $this->episodeId,
+            );
 
             // ── 5. Update episode record ──────────────────────────────────
             $episode->update([
@@ -101,6 +112,27 @@ class TranscodeAudioJob implements ShouldQueue
             // ── 6. Delete the raw file from S3 to save storage ────────────
             if ($transcoded) {
                 $s3->delete($this->rawS3Key);
+            }
+
+            // ── 7. Notify the artist that their episode is ready ──────────
+            // Load the artist via chapter → audiobook → artist.
+            $episode->load('chapter.audiobook.artist');
+            $artist    = $episode->chapter?->audiobook?->artist;
+            $bookTitle = $episode->chapter?->audiobook?->title ?? 'your audiobook';
+            $thumbUrl  = $episode->chapter?->audiobook?->thumbnail_url ?? null;
+
+            if ($artist) {
+                SendPushNotificationJob::dispatch(
+                    userId:   $artist->id,
+                    type:     'episode_ready',
+                    title:    '🎙️ Episode ready to play',
+                    body:     "\"{$episode->title}\" from {$bookTitle} has finished processing.",
+                    data:     [
+                        'episode_id'   => (string) $episode->id,
+                        'audiobook_id' => (string) ($episode->chapter?->audiobook?->id ?? ''),
+                    ],
+                    imageUrl: $thumbUrl,
+                );
             }
 
             Log::info("TranscodeAudioJob[{$this->episodeId}]: DONE — transcoded={$transcoded}, duration={$duration}s, key={$finalKey}");
@@ -179,5 +211,68 @@ class TranscodeAudioJob implements ShouldQueue
         }
 
         return 0;
+    }
+
+    private function mimeForExtension(string $ext): string
+    {
+        return match (strtolower($ext)) {
+            'mp3', 'mpeg' => 'audio/mpeg',
+            'wav' => 'audio/wav',
+            'ogg' => 'audio/ogg',
+            'm4a', 'mp4' => 'audio/mp4',
+            default => 'application/octet-stream',
+        };
+    }
+
+    /**
+     * Gate that must pass before we mark an episode as 'ready'.
+     *
+     * Checks enforced:
+     *  1. File exists at the expected path.
+     *  2. File size is above the minimum threshold (10 KB).
+     *     Any valid audio file — even a 1-second MP3 — is larger than this.
+     *     A smaller file almost certainly means truncation or a failed write.
+     *  3. Duration is non-zero when FFmpeg was available to measure it.
+     *     A zero duration from a successful transcode means the file is unreadable.
+     *
+     * @throws \RuntimeException on any validation failure (caught → episode marked 'failed')
+     */
+    private function validateAudioOutput(
+        string $path,
+        int    $duration,
+        bool   $transcoded,
+        int    $episodeId,
+    ): void {
+        // 1. File must exist
+        if (! file_exists($path)) {
+            throw new \RuntimeException(
+                "TranscodeAudioJob[{$episodeId}]: output file does not exist at path={$path}"
+            );
+        }
+
+        // 2. Minimum file size: 10 KB
+        $minBytes  = 10_240;
+        $actualBytes = filesize($path);
+        if ($actualBytes < $minBytes) {
+            throw new \RuntimeException(
+                "TranscodeAudioJob[{$episodeId}]: output file is suspiciously small " .
+                "({$actualBytes} bytes < {$minBytes} minimum). " .
+                "Likely truncated or a failed write."
+            );
+        }
+
+        // 3. Duration must be readable when we ran FFmpeg.
+        //    If FFmpeg was unavailable we skip this check (duration stays 0 from raw).
+        if ($transcoded && $duration <= 0) {
+            throw new \RuntimeException(
+                "TranscodeAudioJob[{$episodeId}]: FFmpeg produced output but duration " .
+                "could not be read (got 0s). File may be corrupt or contain no audio stream."
+            );
+        }
+
+        Log::info(
+            "TranscodeAudioJob[{$episodeId}]: output validation passed — " .
+            "size={$actualBytes}B duration={$duration}s transcoded={$transcoded}"
+        );
     }
 }

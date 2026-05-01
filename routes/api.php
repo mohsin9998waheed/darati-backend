@@ -15,6 +15,9 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RatingController;
+use App\Http\Controllers\Api\TelemetryController;
+use App\Http\Controllers\Api\NotificationPreferenceController;
+use App\Http\Controllers\Api\Admin\AnalyticsController;
 use Illuminate\Support\Facades\Route;
 
 // Public auth routes
@@ -72,6 +75,20 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Location detection (fire-and-forget)
     Route::post('/location', [LocationController::class, 'store']);
+
+    // Playback telemetry (fire-and-forget from mobile client)
+    Route::post('/telemetry/playback', [TelemetryController::class, 'playback']);
+
+    // Notification preferences
+    Route::get('/notifications/preferences',  [NotificationPreferenceController::class, 'show']);
+    Route::put('/notifications/preferences',  [NotificationPreferenceController::class, 'update']);
+
+    // Admin analytics (role:admin only)
+    Route::middleware('role:admin')->prefix('admin')->group(function () {
+        Route::get('/analytics/overview',  [AnalyticsController::class, 'overview']);
+        Route::get('/analytics/devices',   [AnalyticsController::class, 'devices']);
+        Route::get('/analytics/episodes',  [AnalyticsController::class, 'episodes']);
+    });
 });
 
 // Audio streaming (signed URL or token-based)

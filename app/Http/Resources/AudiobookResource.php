@@ -45,12 +45,24 @@ class AudiobookResource extends JsonResource
                     'description' => $chapter->description,
                     'episodes' => $chapter->relationLoaded('episodes')
                         ? $chapter->episodes->map(fn ($ep) => [
-                            'id'               => $ep->id,
-                            'title'            => $ep->title,
-                            'duration_seconds' => $ep->duration_seconds,
-                            'is_preview'       => $ep->is_preview,
-                            'order'            => $ep->order,
-                            'stream_url'       => route('api.stream', $ep->id),
+                            'id'                    => $ep->id,
+                            'title'                 => $ep->title,
+                            'duration_seconds'      => $ep->duration_seconds,
+                            'is_preview'            => $ep->is_preview,
+                            'order'                 => $ep->order,
+                            'processing_status'     => $ep->processing_status,
+                            // is_playable: explicit boolean the client can branch on without
+                            // inspecting processing_status itself.
+                            'is_playable'           => $ep->isPlayable(),
+                            // playback_block_reason: machine-readable string when not playable,
+                            // null when playable. Clients use this for precise UX copy.
+                            // Values: 'processing' | 'processing_failed' | 'audio_missing' | null
+                            'playback_block_reason' => $ep->playbackBlockReason(),
+                            // stream_url only present when episode is playable; null otherwise
+                            // so the client never attempts to play an unready episode.
+                            'stream_url'            => $ep->isPlayable()
+                                ? route('api.stream', $ep->id)
+                                : null,
                         ])
                         : [],
                 ])

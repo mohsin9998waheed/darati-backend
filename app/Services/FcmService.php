@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -106,10 +107,13 @@ class FcmService
 
     /**
      * Obtain a short-lived OAuth 2.0 access token using the service account private key.
-     * Valid for 1 hour; for production consider caching this in Redis/cache.
+     * Cached in Redis for 58 minutes (token TTL is 60 min; 2-min buffer prevents edge expiry).
      */
     private function getAccessToken(): ?string
     {
+        $cached = Cache::get('fcm_access_token');
+        if ($cached) return $cached;
+
         try {
             $sa       = $this->serviceAccount;
             $now      = time();
@@ -152,12 +156,17 @@ class FcmService
                 return null;
             }
 
-            Log::info('FcmService: access token acquired', [
-                'project_id' => $this->projectId,
+            $token = $res->json('access_token');
+
+            // Cache for 58 minutes (3480 seconds)
+            Cache::put('fcm_access_token', $token, 3480);
+
+            Log::info('FcmService: access token acquired and cached', [
+                'project_id'   => $this->projectId,
                 'client_email' => (string) ($sa['client_email'] ?? ''),
             ]);
 
-            return $res->json('access_token');
+            return $token;
         } catch (\Throwable $e) {
             Log::error('FcmService: getAccessToken exception', ['message' => $e->getMessage()]);
             return null;

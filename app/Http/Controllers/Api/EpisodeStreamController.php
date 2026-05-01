@@ -7,16 +7,61 @@ use App\Models\Episode;
 use App\Services\S3Service;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EpisodeStreamController extends Controller
 {
+    /**
+     * Resolve a correlation ID for this request.
+     *
+     * Prefers the X-Request-Id header set by upstream proxies (Railway, CloudFront, etc.).
+     * Falls back to a fresh UUID so every response is always traceable.
+     */
+    private function correlationId(Request $request): string
+    {
+        return $request->header('X-Request-Id') ?: (string) Str::uuid();
+    }
+
+    /**
+     * Build a structured 409 response for a non-playable episode.
+     *
+     * Using 409 Conflict (rather than 404) signals "temporarily unavailable"
+     * vs "does not exist", giving clients enough information to show the right UX
+     * without leaking existence of unauthorized content.
+     */
+    private function notPlayableResponse(Episode $episode, string $correlationId): JsonResponse
+    {
+        $retryAfter = $episode->isProcessing() ? 30 : null;
+
+        $response = response()->json([
+            'error'               => 'episode_not_playable',
+            'block_reason'        => $episode->playbackBlockReason(),
+            'retry_after_seconds' => $retryAfter,
+            'message'             => match ($episode->playbackBlockReason()) {
+                'processing'        => 'This episode is still being processed. Please try again shortly.',
+                'processing_failed' => 'Audio processing failed for this episode. Please contact support.',
+                'audio_missing'     => 'Audio file is unavailable. Please contact support.',
+                default             => 'This episode is not available for playback.',
+            },
+        ], 409);
+
+        $response->headers->set('X-Correlation-Id', $correlationId);
+        if ($retryAfter) {
+            $response->headers->set('Retry-After', (string) $retryAfter);
+        }
+
+        return $response;
+    }
+
     /**
      * Return a time-limited S3 URL so the client can stream directly (low latency),
      * instead of proxying bytes through PHP.
      */
     public function signedAudio(Request $request, Episode $episode): JsonResponse
     {
+        $correlationId = $this->correlationId($request);
+
         $episode->loadMissing('chapter.audiobook');
         if (! $episode->chapter || ! $episode->chapter->audiobook) {
             abort(404, 'Episode has no audiobook.');
@@ -26,22 +71,56 @@ class EpisodeStreamController extends Controller
             abort(404);
         }
 
-        $s3 = app(S3Service::class);
-        if (! $episode->audio_path || ! $s3->exists($episode->audio_path)) {
-            abort(404, 'Audio file not found.');
+        if (! $episode->isPlayable()) {
+            return $this->notPlayableResponse($episode, $correlationId);
         }
 
-        // Keep ≤ 7 days (S3 presign limit); client can refresh by calling again.
+        $s3 = app(S3Service::class);
+        if (! $s3->exists($episode->audio_path)) {
+            // audio_path is set but S3 object is gone — treat as audio_missing
+            $episode->processing_status = 'ready'; // already ready, path just missing from S3
+            return response()->json([
+                'error'               => 'episode_not_playable',
+                'block_reason'        => 'audio_missing',
+                'retry_after_seconds' => null,
+                'message'             => 'Audio file is unavailable. Please contact support.',
+            ], 409)->withHeaders(['X-Correlation-Id' => $correlationId]);
+        }
+
+        // Presign for 7 days (S3 max). The response itself is private/no-cache:
+        // each user must call this endpoint to get their own signed URL — the URL
+        // is already time-limited and contains auth params, so no CDN caching here.
+        $expiresMinutes = 60 * 24 * 7 - 60; // ~7 days minus 1 min buffer
+        $playUrl        = $s3->temporaryUrl($episode->audio_path, $expiresMinutes);
+
         return response()->json([
-            'play_url' => $s3->temporaryUrl($episode->audio_path, 60 * 24 * 7 - 60),
+            'play_url'          => $playUrl,
+            'expires_in_seconds' => $expiresMinutes * 60,
+            'correlation_id'    => $correlationId,
+        ])->withHeaders([
+            'X-Correlation-Id' => $correlationId,
+            // Private: the signed URL is user-scoped; proxies must not cache it.
+            'Cache-Control'    => 'private, no-store',
         ]);
     }
 
     public function stream(Request $request, Episode $episode): StreamedResponse
     {
+        $correlationId = $this->correlationId($request);
         $s3 = app(S3Service::class);
 
-        if (! $episode->audio_path || ! $s3->exists($episode->audio_path)) {
+        if (! $episode->isPlayable()) {
+            // StreamedResponse cannot return JSON; abort with plain 409 here.
+            // Clients should prefer /signed-audio; /stream is a fallback.
+            abort(response()->json([
+                'error'               => 'episode_not_playable',
+                'block_reason'        => $episode->playbackBlockReason(),
+                'retry_after_seconds' => $episode->isProcessing() ? 30 : null,
+                'message'             => 'Episode is not ready for playback.',
+            ], 409)->withHeaders(['X-Correlation-Id' => $correlationId]));
+        }
+
+        if (! $s3->exists($episode->audio_path)) {
             abort(404, 'Audio file not found.');
         }
 
@@ -53,9 +132,10 @@ class EpisodeStreamController extends Controller
         $status = 200;
 
         $headers = [
-            'Content-Type'  => $mimeType,
-            'Accept-Ranges' => 'bytes',
-            'Cache-Control' => 'no-store',
+            'Content-Type'     => $mimeType,
+            'Accept-Ranges'    => 'bytes',
+            'Cache-Control'    => 'no-store',
+            'X-Correlation-Id' => $correlationId,
         ];
 
         if ($request->headers->has('Range')) {
