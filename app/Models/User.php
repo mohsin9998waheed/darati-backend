@@ -98,8 +98,12 @@ class User extends Authenticatable
                 // If signing fails, return a deterministic fallback avatar.
             }
         }
-        $initial   = strtoupper(substr($this->name, 0, 1));
-        $encodedName = urlencode($this->name);
+        $safeName = trim((string) ($this->name ?? ''));
+        if ($safeName === '') {
+            $safeName = 'User';
+        }
+        $initial = strtoupper(substr($safeName, 0, 1));
+        $encodedName = urlencode($safeName);
         return "https://ui-avatars.com/api/?name={$encodedName}&background=1DB954&color=fff&size=256";
     }
 }
