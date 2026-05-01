@@ -9,6 +9,7 @@ use App\Services\S3Service;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -29,11 +30,12 @@ class AudiobookController extends Controller
             : "audiobook_index_v{$version}_{$request->getQueryString()}_p{$page}";
 
         if ($cacheKey) {
-            $audiobooks = $this->rememberSafe(
+            $payload = $this->rememberSafe(
                 $cacheKey,
                 300,
-                fn () => $this->buildIndexQuery($request, null)->paginate(20),
+                fn () => $this->buildIndexPayload($request, $page),
             );
+            $audiobooks = $this->buildPaginatorFromPayload($request, $payload);
         } else {
             $audiobooks = $this->buildIndexQuery($request, $uid)->paginate(20);
         }
@@ -79,6 +81,61 @@ class AudiobookController extends Controller
         };
 
         return $query;
+    }
+
+    /**
+     * Build a cache-safe index payload (primitives only).
+     *
+     * We intentionally avoid caching paginator objects because serialized
+     * LengthAwarePaginator instances can become incomplete objects in some
+     * production cache/unserialize paths.
+     */
+    private function buildIndexPayload(Request $request, int $page): array
+    {
+        $paginator = $this->buildIndexQuery($request, null)->paginate(20, ['*'], 'page', $page);
+
+        return [
+            'ids'          => $paginator->pluck('id')->values()->all(),
+            'total'        => $paginator->total(),
+            'per_page'     => $paginator->perPage(),
+            'current_page' => $paginator->currentPage(),
+        ];
+    }
+
+    /**
+     * Rehydrate a paginator from a cache-safe payload.
+     */
+    private function buildPaginatorFromPayload(Request $request, array $payload): LengthAwarePaginator
+    {
+        $ids = array_values(array_filter($payload['ids'] ?? [], fn ($id) => is_numeric($id)));
+        if ($ids === []) {
+            return new LengthAwarePaginator(
+                collect(),
+                0,
+                20,
+                (int) ($payload['current_page'] ?? 1),
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+        }
+
+        $rows = Audiobook::with('artist:id,name,avatar', 'category:id,name,slug')
+            ->where('status', 'approved')
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
+
+        $ordered = collect($ids)
+            ->map(fn ($id) => $rows->get((int) $id))
+            ->filter()
+            ->values();
+
+        return new LengthAwarePaginator(
+            $ordered,
+            (int) ($payload['total'] ?? $ordered->count()),
+            (int) ($payload['per_page'] ?? 20),
+            (int) ($payload['current_page'] ?? 1),
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
     }
 
     public function show(Audiobook $audiobook): AudiobookResource
