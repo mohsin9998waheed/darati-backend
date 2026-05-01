@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use App\Services\S3Service;
+use Throwable;
 
 class Audiobook extends Model
 {
@@ -79,8 +80,14 @@ class Audiobook extends Model
     public function getThumbnailUrlAttribute(): string
     {
         if ($this->thumbnail) {
-            // Signed URL so we don't require public bucket access (Block Public Access compatible).
-            return app(S3Service::class)->temporaryUrl($this->thumbnail, 60 * 48); // 48 hours
+            try {
+                // Signed URL so we don't require public bucket access (Block Public Access compatible).
+                return app(S3Service::class)->temporaryUrl($this->thumbnail, 60 * 48); // 48 hours
+            } catch (Throwable) {
+                // Fail open: one bad object key or S3 config issue should not 500
+                // the whole /audiobooks response.
+                return asset('images/audiobook-placeholder.png');
+            }
         }
         return asset('images/audiobook-placeholder.png');
     }

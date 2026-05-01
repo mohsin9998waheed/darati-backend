@@ -9,6 +9,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Services\S3Service;
 use Laravel\Sanctum\HasApiTokens;
+use Throwable;
 
 class User extends Authenticatable
 {
@@ -87,10 +88,15 @@ class User extends Authenticatable
     public function getAvatarUrlAttribute(): string
     {
         if ($this->avatar) {
-            // Keep avatar delivery compatible with private buckets:
-            // serve a signed URL by default so images always load even when
-            // Block Public Access is enabled on S3.
-            return app(S3Service::class)->temporaryUrl($this->avatar, 60 * 24); // 24 hours
+            try {
+                // Keep avatar delivery compatible with private buckets:
+                // serve a signed URL by default so images always load even when
+                // Block Public Access is enabled on S3.
+                return app(S3Service::class)->temporaryUrl($this->avatar, 60 * 24); // 24 hours
+            } catch (Throwable) {
+                // Fail open for list endpoints that serialize artist avatars.
+                // If signing fails, return a deterministic fallback avatar.
+            }
         }
         $initial   = strtoupper(substr($this->name, 0, 1));
         $encodedName = urlencode($this->name);
