@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 class AudiobookController extends Controller
 {
@@ -28,7 +29,11 @@ class AudiobookController extends Controller
             : "audiobook_index_v{$version}_{$request->getQueryString()}_p{$page}";
 
         if ($cacheKey) {
-            $audiobooks = Cache::remember($cacheKey, 300, fn () => $this->buildIndexQuery($request, null)->paginate(20));
+            $audiobooks = $this->rememberSafe(
+                $cacheKey,
+                300,
+                fn () => $this->buildIndexQuery($request, null)->paginate(20),
+            );
         } else {
             $audiobooks = $this->buildIndexQuery($request, $uid)->paginate(20);
         }
@@ -86,7 +91,7 @@ class AudiobookController extends Controller
         // Per-user fields (favorited_by_user) are layered on top after the cache hit
         // so we don't store user-specific state in a shared cache key.
         $cacheKey = "audiobook_show_{$audiobook->id}";
-        $audiobook = Cache::remember($cacheKey, 600, function () use ($audiobook) {
+        $audiobook = $this->rememberSafe($cacheKey, 600, function () use ($audiobook) {
             $audiobook->load('artist:id,name,avatar,bio', 'category:id,name', 'chapters.episodes');
             return $audiobook;
         });
@@ -158,6 +163,25 @@ class AudiobookController extends Controller
      */
     private function bustIndexCache(): void
     {
-        Cache::increment('audiobook_index_version');
+        try {
+            Cache::increment('audiobook_index_version');
+        } catch (Throwable) {
+            // Fail open: cache invalidation issues must never block writes.
+        }
+    }
+
+    /**
+     * Cache wrapper that fails open.
+     *
+     * If Redis/memcached is down or misconfigured, we still serve fresh DB
+     * results instead of returning 500 from public audiobook endpoints.
+     */
+    private function rememberSafe(string $key, int $seconds, callable $resolver): mixed
+    {
+        try {
+            return Cache::remember($key, $seconds, $resolver);
+        } catch (Throwable) {
+            return $resolver();
+        }
     }
 }
