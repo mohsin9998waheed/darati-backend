@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
 use Throwable;
@@ -114,6 +115,81 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Login failed due to a server error.',
             ], 500);
+        }
+    }
+
+    public function google(Request $request): JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'id_token' => ['required', 'string'],
+            ]);
+
+            // Verify token with Google tokeninfo endpoint.
+            $verify = Http::timeout(10)->get('https://oauth2.googleapis.com/tokeninfo', [
+                'id_token' => $data['id_token'],
+            ]);
+
+            if (! $verify->ok()) {
+                Log::warning('api.auth.google.verify_failed', [
+                    'status' => $verify->status(),
+                    'body' => $verify->body(),
+                    'ip' => $request->ip(),
+                ]);
+                return response()->json(['message' => 'Invalid Google token.'], 401);
+            }
+
+            $payload = $verify->json();
+            $email = (string) ($payload['email'] ?? '');
+            $name = trim((string) ($payload['name'] ?? ''));
+            $emailVerified = (string) ($payload['email_verified'] ?? '') === 'true';
+            $audience = (string) ($payload['aud'] ?? '');
+            $allowedClientIds = config('services.google.allowed_client_ids', []);
+
+            if ($email === '' || ! $emailVerified) {
+                return response()->json(['message' => 'Google account email is not verified.'], 401);
+            }
+
+            if (! empty($allowedClientIds) && ! in_array($audience, $allowedClientIds, true)) {
+                Log::warning('api.auth.google.invalid_audience', [
+                    'aud' => $audience,
+                    'allowed' => $allowedClientIds,
+                    'ip' => $request->ip(),
+                ]);
+                return response()->json(['message' => 'Google token audience mismatch.'], 401);
+            }
+
+            $user = User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => $name !== '' ? $name : strstr($email, '@', true),
+                    // Random hashed password because auth is delegated to Google.
+                    'password' => Hash::make(bin2hex(random_bytes(24))),
+                    'role' => 'listener',
+                    'email_verified_at' => now(),
+                ]
+            );
+
+            if (! $user->is_active) {
+                return response()->json(['message' => 'Account deactivated.'], 403);
+            }
+
+            $token = $user->createToken('api')->plainTextToken;
+
+            Log::info('api.auth.google.success', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json(['user' => $user, 'token' => $token]);
+        } catch (Throwable $e) {
+            Log::error('api.auth.google.error', [
+                'message' => $e->getMessage(),
+                'exception' => get_class($e),
+                'ip' => $request->ip(),
+            ]);
+            return response()->json(['message' => 'Google login failed due to server error.'], 500);
         }
     }
 

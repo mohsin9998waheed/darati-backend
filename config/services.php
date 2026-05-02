@@ -40,4 +40,13 @@ return [
         'service_account_json'  => env('FIREBASE_SERVICE_ACCOUNT_JSON'),
     ],
 
+    'google' => [
+        // Comma-separated list of valid Google OAuth client IDs for mobile apps.
+        // Example: "android-client-id.apps.googleusercontent.com,ios-client-id.apps.googleusercontent.com"
+        'allowed_client_ids' => array_filter(array_map(
+            'trim',
+            explode(',', (string) env('GOOGLE_ALLOWED_CLIENT_IDS', ''))
+        )),
+    ],
+
 ];

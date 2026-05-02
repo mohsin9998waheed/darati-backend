@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Route;
 // Public auth routes
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/google', [AuthController::class, 'google']);
 
 // Public browsing
 Route::get('/audiobooks', [AudiobookController::class, 'index']);
