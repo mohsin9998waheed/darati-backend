@@ -21,6 +21,7 @@ class AudiobookResource extends JsonResource
             'avg_rating'    => $this->avg_rating,
             'total_listens'      => $this->total_listens,
             'total_play_seconds' => (int) ($this->total_play_seconds ?? 0),
+            'total_cycles'       => (int) ($this->total_cycles ?? 0),
             'is_favorited'  => $this->when(
                 $request->user() !== null,
                 fn () => (bool) ($this->resource->getAttribute('favorited_by_user') ?? $request->user()->favorites()->where('audiobook_id', $this->id)->exists()),

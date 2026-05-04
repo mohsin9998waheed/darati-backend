@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Listen;
 use App\Services\S3Service;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
@@ -82,9 +84,13 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        $booksListened = $user->listens()
-            ->selectRaw('COUNT(DISTINCT episode_id) as cnt')
-            ->value('cnt') ?? 0;
+        // Count distinct audiobooks, not episodes.
+        // listens → episodes.chapter_id → chapters.audiobook_id
+        $booksListened = Listen::where('user_id', $user->id)
+            ->join('episodes', 'listens.episode_id', '=', 'episodes.id')
+            ->join('chapters', 'episodes.chapter_id', '=', 'chapters.id')
+            ->distinct('chapters.audiobook_id')
+            ->count('chapters.audiobook_id');
 
         $favorites = $user->favorites()->count();
         $reviews   = $user->ratings()->count();

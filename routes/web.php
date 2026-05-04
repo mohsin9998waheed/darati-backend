@@ -21,12 +21,14 @@ use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-// Browser diagnostics for Firebase/FCM credentials and scheduler wiring.
-// In production, protect this with DEBUG_HEALTH_KEY query param.
-Route::get('/debug/firebase-health', FirebaseHealthController::class);
-Route::match(['GET', 'POST'], '/debug/firebase-push-test', [FirebaseHealthController::class, 'sendTest'])
-    ->withoutMiddleware([ValidateCsrfToken::class]);
-Route::get('/debug/firebase-push-status', [FirebaseHealthController::class, 'pushStatus']);
+// Browser diagnostics — only available in non-production environments.
+// To access in production, set APP_ENV=local temporarily or use artisan tinker.
+if (app()->environment(['local', 'staging'])) {
+    Route::get('/debug/firebase-health', FirebaseHealthController::class);
+    Route::match(['GET', 'POST'], '/debug/firebase-push-test', [FirebaseHealthController::class, 'sendTest'])
+        ->withoutMiddleware([ValidateCsrfToken::class]);
+    Route::get('/debug/firebase-push-status', [FirebaseHealthController::class, 'pushStatus']);
+}
 
 // Audio streaming for web panels (session auth, Range-request aware)
 Route::get('/episodes/{episode}/play', [WebEpisodeStreamController::class, 'stream'])
@@ -35,7 +37,7 @@ Route::get('/episodes/{episode}/play', [WebEpisodeStreamController::class, 'stre
 
 // Auth
 Route::get('/login', [LoginController::class, 'showLogin'])->name('login')->middleware('guest');
-Route::post('/login', [LoginController::class, 'login'])->name('login.post')->middleware('guest');
+Route::post('/login', [LoginController::class, 'login'])->name('login.post')->middleware(['guest', 'throttle:10,1']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::get('/', function () {

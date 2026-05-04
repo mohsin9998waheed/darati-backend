@@ -27,10 +27,8 @@
     >
         {{-- Brand --}}
         <div class="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-            <div class="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
-                </svg>
+            <div class="w-9 h-9 rounded-xl overflow-hidden shrink-0 ring-1 ring-white/10">
+                <img src="/icon.png" alt="Darati" class="w-full h-full object-contain p-0.5">
             </div>
             <div>
                 <span class="font-bold text-lg leading-none">Darati</span>

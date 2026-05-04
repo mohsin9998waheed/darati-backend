@@ -22,20 +22,25 @@ class LoginController extends Controller
             'password' => ['required'],
         ]);
 
+        // ── Pre-flight: check account state BEFORE granting a session ─────────
+        // Auth::attempt() logs the user in immediately. Checking is_active after
+        // the fact means there is a brief window where a deactivated user holds a
+        // valid session if logout() were to fail. We avoid that by fetching the
+        // user first and short-circuiting before any session is touched.
+        $user = \App\Models\User::where('email', $credentials['email'])->first();
+
+        if ($user && ! $user->is_active) {
+            // Return the same generic message — don't confirm the account exists.
+            return back()->withErrors(['email' => 'The provided credentials do not match our records.'])->onlyInput('email');
+        }
+
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            $user = Auth::user();
-
-            if (! $user->is_active) {
-                Auth::logout();
-                return back()->withErrors(['email' => 'Your account has been deactivated.'])->onlyInput('email');
-            }
-
-            return match ($user->role) {
+            return match (Auth::user()->role) {
                 'admin'  => redirect()->route('admin.dashboard'),
                 'artist' => redirect()->route('artist.dashboard'),
-                default  => redirect()->route('login')->withErrors(['email' => 'No web panel access for this account.']),
+                default  => tap(redirect()->route('login')->withErrors(['email' => 'No web panel access for this account.']), fn () => Auth::logout()),
             };
         }
 
