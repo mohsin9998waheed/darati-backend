@@ -30,7 +30,7 @@ class ChapterController extends Controller
 
         $chapter = $audiobook->chapters()->create([
             'title' => $data['title'],
-            'order' => $audiobook->chapters()->max('order') + 1,
+            'order' => (int) $audiobook->chapters()->max('order') + 1,
         ]);
 
         return response()->json($chapter, 201);

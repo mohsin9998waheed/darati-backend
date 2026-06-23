@@ -39,9 +39,9 @@ class FavoriteController extends Controller
         return response()->json($favorite, 201);
     }
 
-    public function destroy(int $audiobookId): JsonResponse
+    public function destroy(int $audiobook): JsonResponse
     {
-        Favorite::where('user_id', Auth::id())->where('audiobook_id', $audiobookId)->delete();
+        Favorite::where('user_id', Auth::id())->where('audiobook_id', $audiobook)->delete();
         return response()->json(['message' => 'Removed from favorites.']);
     }
 }

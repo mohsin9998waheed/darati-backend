@@ -27,17 +27,17 @@ class AudiobookResource extends JsonResource
                 fn () => (bool) ($this->resource->getAttribute('favorited_by_user') ?? $request->user()->favorites()->where('audiobook_id', $this->id)->exists()),
             ),
             'created_at'    => $this->created_at?->toISOString(),
-            'artist'        => $this->whenLoaded('artist', fn () => [
+            'artist'        => $this->whenLoaded('artist', fn () => $this->artist ? [
                 'id'     => $this->artist->id,
                 'name'   => $this->artist->name,
                 'avatar' => $this->artist->avatar_url,
                 'bio'    => $this->artist->bio,
-            ]),
-            'category'      => $this->whenLoaded('category', fn () => [
+            ] : null),
+            'category'      => $this->whenLoaded('category', fn () => $this->category ? [
                 'id'   => $this->category->id,
                 'name' => $this->category->name,
                 'slug' => $this->category->slug,
-            ]),
+            ] : null),
             'chapters'      => $this->whenLoaded('chapters', fn () =>
                 $this->chapters->map(fn ($chapter) => [
                     'id'       => $chapter->id,

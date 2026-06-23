@@ -149,7 +149,7 @@ class AudiobookController extends Controller
         // so we don't store user-specific state in a shared cache key.
         $cacheKey = "audiobook_show_{$audiobook->id}";
         $audiobook = $this->rememberSafe($cacheKey, 600, function () use ($audiobook) {
-            $audiobook->load('artist:id,name,avatar,bio', 'category:id,name', 'chapters.episodes');
+            $audiobook->load('artist:id,name,avatar,bio', 'category:id,name,slug', 'chapters.episodes');
             return $audiobook;
         });
 

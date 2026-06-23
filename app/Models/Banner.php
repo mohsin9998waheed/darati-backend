@@ -24,7 +24,11 @@ class Banner extends Model
     public function getImageUrlAttribute(): ?string
     {
         if ($this->image_path) {
-            return app(S3Service::class)->temporaryUrl($this->image_path, 60 * 48);
+            try {
+                return app(S3Service::class)->temporaryUrl($this->image_path, 60 * 48);
+            } catch (\Throwable) {
+                return null;
+            }
         }
         return null;
     }
