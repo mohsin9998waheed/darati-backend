@@ -18,13 +18,15 @@ class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
-        try {
-            $data = $request->validate([
-                'name'     => ['required', 'string', 'max:100'],
-                'email'    => ['required', 'email', 'unique:users,email'],
-                'password' => ['required', Password::min(8)],
-            ]);
+        // Validation must run outside try/catch — ValidationException is a Throwable
+        // and would otherwise be swallowed as a generic 500 "server error".
+        $data = $request->validate([
+            'name'     => ['required', 'string', 'max:100'],
+            'email'    => ['required', 'email', 'unique:users,email'],
+            'password' => ['required', Password::min(8)],
+        ]);
 
+        try {
             $user = User::create([
                 'name'     => $data['name'],
                 'email'    => $data['email'],
@@ -70,12 +72,12 @@ class AuthController extends Controller
 
     public function login(Request $request): JsonResponse
     {
-        try {
-            $credentials = $request->validate([
-                'email'    => ['required', 'email'],
-                'password' => ['required'],
-            ]);
+        $credentials = $request->validate([
+            'email'    => ['required', 'email'],
+            'password' => ['required'],
+        ]);
 
+        try {
             if (! Auth::attempt($credentials)) {
                 Log::warning('api.auth.login.invalid_credentials', [
                     'email' => (string) $request->input('email'),
