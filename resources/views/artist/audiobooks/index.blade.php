@@ -31,7 +31,7 @@
             </div>
             <div class="p-4">
                 <h4 class="font-semibold text-gray-900 truncate">{{ $book->title }}</h4>
-                <p class="text-xs text-gray-500 mt-1">{{ $book->chapters_count }} chapter(s) &bull; {{ number_format($book->total_listens) }} listens</p>
+                <p class="text-xs text-gray-500 mt-1">{{ $book->episodes_count }} episode(s) &bull; {{ number_format($book->total_listens) }} listens</p>
                 @if ($book->isRejected() && $book->rejection_reason)
                     <p class="text-xs text-red-500 mt-2 line-clamp-2">Rejected: {{ $book->rejection_reason }}</p>
                 @endif

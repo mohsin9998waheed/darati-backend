@@ -216,10 +216,13 @@ class EpisodePlaybackContractTest extends TestCase
 
         $response->assertStatus(200);
         $episode = $response->json('data.chapters.0.episodes.0');
+        $flat    = $response->json('data.episodes.0');
 
         $this->assertTrue($episode['is_playable']);
         $this->assertNull($episode['playback_block_reason']);
         $this->assertNotNull($episode['stream_url']);
+        $this->assertTrue($flat['is_playable']);
+        $this->assertEquals($episode['id'], $flat['id']);
     }
 
     public function test_audiobook_show_marks_queued_episode_as_not_playable(): void

@@ -8,6 +8,10 @@ use App\Models\Chapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Chapters remain as a hidden one-per-book wrapper.
+ * Creating/updating/deleting chapters via API is deprecated.
+ */
 class ChapterController extends Controller
 {
     public function index(Audiobook $audiobook): JsonResponse
@@ -20,33 +24,22 @@ class ChapterController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'audiobook_id' => ['required', 'exists:audiobooks,id'],
-            'title'        => ['required', 'string', 'max:200'],
-        ]);
-
-        $audiobook = Audiobook::findOrFail($data['audiobook_id']);
-        $this->authorize('update', $audiobook);
-
-        $chapter = $audiobook->chapters()->create([
-            'title' => $data['title'],
-            'order' => (int) $audiobook->chapters()->max('order') + 1,
-        ]);
-
-        return response()->json($chapter, 201);
+        return response()->json([
+            'message' => 'Chapters are no longer used. Create episodes on the audiobook instead.',
+        ], 422);
     }
 
     public function update(Request $request, Chapter $chapter): JsonResponse
     {
-        $this->authorize('update', $chapter->audiobook);
-        $chapter->update($request->validate(['title' => ['required', 'string', 'max:200']]));
-        return response()->json($chapter);
+        return response()->json([
+            'message' => 'Chapters are no longer used. Update episodes instead.',
+        ], 422);
     }
 
     public function destroy(Chapter $chapter): JsonResponse
     {
-        $this->authorize('update', $chapter->audiobook);
-        $chapter->delete();
-        return response()->json(['message' => 'Deleted.']);
+        return response()->json([
+            'message' => 'Chapters are no longer used. Delete individual episodes instead.',
+        ], 422);
     }
 }

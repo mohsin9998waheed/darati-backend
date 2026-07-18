@@ -20,7 +20,7 @@
             @endif
             <div class="flex-1 min-w-0">
                 <h2 class="font-bold text-gray-900 text-lg truncate">{{ $audiobook->title }}</h2>
-                <p class="text-xs text-gray-500 mt-0.5">{{ $audiobook->chapters->count() }} chapter(s) · {{ $audiobook->chapters->sum(fn($c) => $c->episodes->count()) }} episode(s)</p>
+                <p class="text-xs text-gray-500 mt-0.5">{{ $audiobook->chapters->sum(fn($c) => $c->episodes->count()) }} episode(s)</p>
             </div>
             <div class="flex items-center gap-4 flex-wrap">
                 <div class="text-center">

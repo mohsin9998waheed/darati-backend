@@ -42,18 +42,26 @@ class AudiobookController extends Controller
         $audiobook->load('artist', 'category', 'chapters.episodes');
         $audiobook->loadCount(['favorites', 'ratings', 'comments']);
 
-        $totalEpisodes    = $audiobook->chapters->sum(fn ($c) => $c->episodes->count());
-        $totalDuration    = $audiobook->chapters->sum(fn ($c) => $c->episodes->sum('duration_seconds'));
+        $allEpisodes = $audiobook->chapters
+            ->flatMap(fn ($c) => $c->episodes)
+            ->sortBy([
+                ['order', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values();
+        $totalEpisodes    = $allEpisodes->count();
+        $totalDuration    = $allEpisodes->sum('duration_seconds');
         $listenHours      = round($audiobook->total_play_seconds / 3600, 1);
-        $processingCount  = $audiobook->chapters->sum(
-            fn ($c) => $c->episodes->filter(fn ($e) => in_array($e->processing_status, ['queued', 'processing']))->count()
-        );
+        $processingCount  = $allEpisodes->filter(
+            fn ($e) => in_array($e->processing_status, ['queued', 'processing'], true)
+        )->count();
 
         $recentRatings  = $audiobook->ratings()->with('user:id,name')->latest()->take(50)->get();
         $recentComments = $audiobook->comments()->with('user:id,name,email')->latest()->take(50)->get();
 
         return view('admin.audiobooks.show', compact(
             'audiobook',
+            'allEpisodes',
             'totalEpisodes',
             'totalDuration',
             'listenHours',

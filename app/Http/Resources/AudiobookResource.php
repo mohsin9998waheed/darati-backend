@@ -38,36 +38,60 @@ class AudiobookResource extends JsonResource
                 'name' => $this->category->name,
                 'slug' => $this->category->slug,
             ] : null),
+            // Flat episode list (Book → Episodes). Preferred by new clients.
+            'episodes'      => $this->whenLoaded('chapters', fn () =>
+                $this->chapters
+                    ->flatMap(fn ($chapter) => $chapter->relationLoaded('episodes')
+                        ? $chapter->episodes
+                        : collect())
+                    ->sortBy([
+                        ['order', 'asc'],
+                        ['id', 'asc'],
+                    ])
+                    ->values()
+                    ->map(fn ($ep) => $this->mapEpisode($ep))
+            ),
+            // Nested chapters kept for older clients; after flatten each book has one wrapper chapter.
             'chapters'      => $this->whenLoaded('chapters', fn () =>
                 $this->chapters->map(fn ($chapter) => [
-                    'id'       => $chapter->id,
-                    'title'    => $chapter->title,
-                    'order'    => $chapter->order,
+                    'id'          => $chapter->id,
+                    'title'       => $chapter->title,
+                    'order'       => $chapter->order,
                     'description' => $chapter->description,
-                    'episodes' => $chapter->relationLoaded('episodes')
-                        ? $chapter->episodes->map(fn ($ep) => [
-                            'id'                    => $ep->id,
-                            'title'                 => $ep->title,
-                            'duration_seconds'      => $ep->duration_seconds,
-                            'is_preview'            => $ep->is_preview,
-                            'order'                 => $ep->order,
-                            'processing_status'     => $ep->processing_status,
-                            // is_playable: explicit boolean the client can branch on without
-                            // inspecting processing_status itself.
-                            'is_playable'           => $ep->isPlayable(),
-                            // playback_block_reason: machine-readable string when not playable,
-                            // null when playable. Clients use this for precise UX copy.
-                            // Values: 'processing' | 'processing_failed' | 'audio_missing' | null
-                            'playback_block_reason' => $ep->playbackBlockReason(),
-                            // stream_url only present when episode is playable; null otherwise
-                            // so the client never attempts to play an unready episode.
-                            'stream_url'            => $ep->isPlayable()
-                                ? route('api.stream', $ep->id)
-                                : null,
-                        ])
+                    'episodes'    => $chapter->relationLoaded('episodes')
+                        ? $chapter->episodes->map(fn ($ep) => $this->mapEpisode($ep))
                         : [],
                 ])
             ),
+        ];
+    }
+
+    /**
+     * Shared episode payload for both flat `episodes` and nested `chapters[].episodes`.
+     *
+     * @return array<string, mixed>
+     */
+    private function mapEpisode($ep): array
+    {
+        return [
+            'id'                    => $ep->id,
+            'title'                 => $ep->title,
+            'duration_seconds'      => $ep->duration_seconds,
+            'is_preview'            => $ep->is_preview,
+            'order'                 => $ep->order,
+            'processing_status'     => $ep->processing_status,
+            // is_playable: explicit boolean the client can branch on without
+            // inspecting processing_status itself.
+            'is_playable'           => $ep->isPlayable(),
+            // playback_block_reason: machine-readable string when not playable,
+            // null when playable. Clients use this for precise UX copy.
+            // Values: 'processing' | 'processing_failed' | 'audio_missing' | null
+            'playback_block_reason' => $ep->playbackBlockReason(),
+            // stream_url only present when episode is playable; null otherwise
+            // so the client never attempts to play an unready episode.
+            'stream_url'            => $ep->isPlayable()
+                ? route('api.stream', $ep->id)
+                : null,
         ];
     }
 }

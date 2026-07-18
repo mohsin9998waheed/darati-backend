@@ -82,11 +82,7 @@
                     @endif
                 </div>
                 {{-- Stats row --}}
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-1">
-                    <div class="bg-surface-50 rounded-xl px-3 py-2.5 text-center">
-                        <p class="text-lg font-bold text-gray-900">{{ $audiobook->chapters->count() }}</p>
-                        <p class="text-xs text-gray-400 mt-0.5">Chapters</p>
-                    </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-1">
                     <div class="bg-surface-50 rounded-xl px-3 py-2.5 text-center">
                         <p class="text-lg font-bold text-gray-900">{{ $totalEpisodes }}</p>
                         <p class="text-xs text-gray-400 mt-0.5">Episodes</p>
@@ -105,155 +101,109 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {{-- ── Left: Chapters & Episodes ── --}}
+        {{-- ── Left: Episodes ── --}}
         <div class="lg:col-span-2 space-y-4">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
                 <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                    <h3 class="font-semibold text-gray-900">Chapters & Episodes</h3>
-                    <span class="text-xs text-gray-400">{{ $audiobook->chapters->count() }} chapter(s) · {{ $totalEpisodes }} episode(s)</span>
+                    <h3 class="font-semibold text-gray-900">Episodes</h3>
+                    <span class="text-xs text-gray-400">{{ $totalEpisodes }} episode(s)</span>
                 </div>
 
-                @forelse ($audiobook->chapters as $chapter)
-                <div class="border-b border-gray-50 last:border-b-0" x-data="{ open: true }">
-                    {{-- Chapter header --}}
-                    <div class="flex items-center gap-3 px-5 py-3 bg-surface-50/60 hover:bg-surface-100 cursor-pointer select-none" @click="open = !open">
-                        <span class="w-6 h-6 flex items-center justify-center bg-purple-100 text-purple-700 rounded-full text-xs font-bold shrink-0">{{ $chapter->order }}</span>
-                        <div class="flex-1 min-w-0">
-                            <span class="font-semibold text-gray-800 text-sm">{{ $chapter->title }}</span>
-                            @if ($chapter->description)
-                                <p class="text-xs text-gray-400 mt-0.5 line-clamp-1">{{ $chapter->description }}</p>
+                @forelse ($allEpisodes as $episode)
+                <div class="flex items-center gap-3 px-5 py-3 border-b border-gray-50 last:border-b-0 hover:bg-purple-50/30 group">
+                    @if ($episode->audio_path)
+                    <button
+                        type="button"
+                        onclick="playEpisode({ id: {{ $episode->id }}, title: {{ Js::from($episode->title) }}, bookTitle: {{ Js::from($audiobook->title) }}, url: '{{ route('episodes.play', $episode) }}', thumbnailUrl: {{ Js::from($audiobook->thumbnail_url) }} })"
+                        class="w-9 h-9 flex items-center justify-center rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 shrink-0 transition shadow-sm shadow-purple-200"
+                        title="Play {{ $episode->title }}"
+                    >
+                        <svg class="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+                    @else
+                    <div class="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 border-2 border-dashed border-gray-300 shrink-0" title="No audio uploaded yet">
+                        <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                    </div>
+                    @endif
+
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800 truncate">
+                            <span class="text-gray-400 font-normal">{{ $episode->order }}.</span> {{ $episode->title }}
+                        </p>
+                        <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                            @if ($episode->is_preview)
+                                <span class="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-medium">Preview</span>
+                            @endif
+                            @if ($episode->processing_status === 'queued')
+                                <span class="episode-status-badge text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1"
+                                      data-episode-id="{{ $episode->id }}"
+                                      data-status-url="{{ route('artist.episodes.status', $episode) }}">
+                                    <svg class="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-dasharray="40" stroke-dashoffset="15" stroke-linecap="round"/></svg>
+                                    Queued
+                                </span>
+                            @elseif ($episode->processing_status === 'processing')
+                                <span class="episode-status-badge text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1"
+                                      data-episode-id="{{ $episode->id }}"
+                                      data-status-url="{{ route('artist.episodes.status', $episode) }}">
+                                    <svg class="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-dasharray="40" stroke-dashoffset="15" stroke-linecap="round"/></svg>
+                                    Optimising…
+                                </span>
+                            @elseif ($episode->processing_status === 'failed')
+                                <span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">⚠ Transcode failed</span>
+                            @endif
+                            @if ($episode->duration_seconds > 0)
+                                <span class="text-xs text-gray-400">{{ $episode->duration_formatted }}</span>
+                            @endif
+                            @if ($episode->file_size)
+                                <span class="text-xs text-gray-300">{{ round($episode->file_size / 1048576, 1) }} MB</span>
+                            @endif
+                            @if (! $episode->audio_path)
+                                <span class="text-xs text-amber-500 font-medium">No audio</span>
                             @endif
                         </div>
-                        <span class="text-xs text-gray-400 shrink-0">{{ $chapter->episodes->count() }} ep.</span>
-                        <form method="POST" action="{{ route('artist.chapters.destroy', $chapter) }}" onsubmit="return confirm('Delete chapter and all its episodes?')" data-no-loader class="shrink-0">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="px-2 py-1 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 rounded">Delete</button>
-                        </form>
-                        <svg class="w-4 h-4 text-gray-400 shrink-0 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                     </div>
 
-                    {{-- Episodes list --}}
-                    <div x-show="open" x-transition>
-                        @forelse ($chapter->episodes as $episode)
-                        <div class="flex items-center gap-3 px-5 py-3 border-t border-gray-50 hover:bg-purple-50/30 group">
-                            {{-- Play button --}}
-                            @if ($episode->audio_path)
-                            <button
-                                type="button"
-                                onclick="playEpisode({ id: {{ $episode->id }}, title: {{ Js::from($episode->title) }}, bookTitle: {{ Js::from($audiobook->title) }}, url: '{{ route('episodes.play', $episode) }}', thumbnailUrl: {{ Js::from($audiobook->thumbnail_url) }} })"
-                                class="w-9 h-9 flex items-center justify-center rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 shrink-0 transition shadow-sm shadow-purple-200"
-                                title="Play {{ $episode->title }}"
-                            >
-                                <svg class="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                            </button>
-                            @else
-                            <div class="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 border-2 border-dashed border-gray-300 shrink-0" title="No audio uploaded yet">
-                                <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-                            </div>
-                            @endif
-
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-gray-800 truncate">
-                                    <span class="text-gray-400 font-normal">{{ $episode->order }}.</span> {{ $episode->title }}
-                                </p>
-                                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                                    @if ($episode->is_preview)
-                                        <span class="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-medium">Preview</span>
-                                    @endif
-                                    @if ($episode->processing_status === 'queued')
-                                        <span class="episode-status-badge text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1"
-                                              data-episode-id="{{ $episode->id }}"
-                                              data-status-url="{{ route('artist.episodes.status', $episode) }}">
-                                            <svg class="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-dasharray="40" stroke-dashoffset="15" stroke-linecap="round"/></svg>
-                                            Queued
-                                        </span>
-                                    @elseif ($episode->processing_status === 'processing')
-                                        <span class="episode-status-badge text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1"
-                                              data-episode-id="{{ $episode->id }}"
-                                              data-status-url="{{ route('artist.episodes.status', $episode) }}">
-                                            <svg class="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-dasharray="40" stroke-dashoffset="15" stroke-linecap="round"/></svg>
-                                            Optimising…
-                                        </span>
-                                    @elseif ($episode->processing_status === 'failed')
-                                        <span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">⚠ Transcode failed</span>
-                                    @endif
-                                    @if ($episode->duration_seconds > 0)
-                                        <span class="text-xs text-gray-400">{{ $episode->duration_formatted }}</span>
-                                    @endif
-                                    @if ($episode->file_size)
-                                        <span class="text-xs text-gray-300">{{ round($episode->file_size / 1048576, 1) }} MB</span>
-                                    @endif
-                                    @if (! $episode->audio_path)
-                                        <span class="text-xs text-amber-500 font-medium">No audio</span>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <form method="POST" action="{{ route('artist.episodes.destroy', $episode) }}" onsubmit="return confirm('Delete episode?')" data-no-loader class="shrink-0 opacity-0 group-hover:opacity-100 transition">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="px-2 py-1 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 rounded">Delete</button>
-                            </form>
-                        </div>
-                        @empty
-                        <div class="px-5 py-4 text-center">
-                            <p class="text-xs text-gray-400">No episodes yet — add one below ↓</p>
-                        </div>
-                        @endforelse
-
-                        {{-- Add Episode --}}
-                        <div class="px-5 py-3 bg-surface-50/40 border-t border-dashed border-gray-200" x-data="{ open: false }">
-                            <button @click="open = !open" type="button" class="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-800 font-medium">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                                Add Episode
-                            </button>
-                            <form x-show="open" x-transition method="POST" action="{{ route('artist.episodes.store', $chapter) }}" enctype="multipart/form-data" class="mt-3 space-y-3">
-                                @csrf
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">Episode title *</label>
-                                        <input type="text" name="title" required placeholder="e.g. Part 1 – Introduction" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">Audio file * <span class="text-gray-400">(mp3/wav/ogg/m4a, up to 512 MB — large files are auto-optimised)</span></label>
-                                        <input type="file" name="audio_file" accept=".mp3,.mpeg,.wav,.ogg,.m4a,audio/mpeg,audio/*" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-4">
-                                    <label class="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                                        <input type="checkbox" name="is_preview" value="1" class="w-3.5 h-3.5 rounded text-purple-600">
-                                        Mark as free preview
-                                    </label>
-                                    <button type="submit" class="px-5 py-2 bg-purple-600 text-white text-xs font-semibold rounded-lg hover:bg-purple-700">Upload Episode</button>
-                                    <button @click.prevent="open = false" type="button" class="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                    <form method="POST" action="{{ route('artist.episodes.destroy', $episode) }}" onsubmit="return confirm('Delete episode?')" data-no-loader class="shrink-0 opacity-0 group-hover:opacity-100 transition">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="px-2 py-1 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 rounded">Delete</button>
+                    </form>
                 </div>
                 @empty
                 <div class="text-center py-12">
                     <svg class="w-10 h-10 text-gray-200 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
-                    <p class="text-sm text-gray-400">No chapters yet. Add your first chapter below.</p>
+                    <p class="text-sm text-gray-400">No episodes yet. Add your first episode below.</p>
                 </div>
                 @endforelse
             </div>
 
-            {{-- Add Chapter --}}
+            {{-- Add Episode --}}
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5" x-data="{ open: true }">
                 <button @click="open = !open" class="flex items-center justify-between w-full">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                        <h3 class="font-semibold text-gray-900 text-sm">Add New Chapter</h3>
+                        <h3 class="font-semibold text-gray-900 text-sm">Add New Episode</h3>
                     </div>
                     <svg class="w-4 h-4 text-gray-400 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </button>
-                <form x-show="open" x-transition method="POST" action="{{ route('artist.chapters.store', $audiobook) }}" class="mt-4 space-y-3">
+                <form x-show="open" x-transition method="POST" action="{{ route('artist.episodes.storeForAudiobook', $audiobook) }}" enctype="multipart/form-data" class="mt-4 space-y-3">
                     @csrf
-                    <input type="text" name="title" placeholder="Chapter title..." required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                    <textarea name="description" rows="2" placeholder="Chapter description (optional)..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"></textarea>
-                    <div class="flex items-center gap-3">
-                        <button type="submit" class="px-5 py-2.5 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700">Add Chapter</button>
-                        <p class="text-xs text-gray-400">Chapter {{ $audiobook->chapters->count() + 1 }} will be added</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Episode title *</label>
+                            <input type="text" name="title" required placeholder="e.g. Part 1 – Introduction" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Audio file * <span class="text-gray-400">(mp3/wav/ogg/m4a, up to 512 MB — large files are auto-optimised)</span></label>
+                            <input type="file" name="audio_file" accept=".mp3,.mpeg,.wav,.ogg,.m4a,audio/mpeg,audio/*" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                            <input type="checkbox" name="is_preview" value="1" class="w-3.5 h-3.5 rounded text-purple-600">
+                            Mark as free preview
+                        </label>
+                        <button type="submit" class="px-5 py-2 bg-purple-600 text-white text-xs font-semibold rounded-lg hover:bg-purple-700">Upload Episode</button>
+                        <p class="text-xs text-gray-400">Episode {{ $totalEpisodes + 1 }} will be added</p>
                     </div>
                 </form>
             </div>

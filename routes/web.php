@@ -100,6 +100,7 @@ Route::prefix('artist')->name('artist.')->middleware(['auth', 'role:artist'])->g
     Route::put('/chapters/{chapter}', [ArtistChapterController::class, 'update'])->name('chapters.update');
     Route::delete('/chapters/{chapter}', [ArtistChapterController::class, 'destroy'])->name('chapters.destroy');
 
+    Route::post('/audiobooks/{audiobook}/episodes', [ArtistEpisodeController::class, 'storeForAudiobook'])->name('episodes.storeForAudiobook');
     Route::post('/chapters/{chapter}/episodes', [ArtistEpisodeController::class, 'store'])->name('episodes.store');
     Route::put('/episodes/{episode}', [ArtistEpisodeController::class, 'update'])->name('episodes.update');
     Route::delete('/episodes/{episode}', [ArtistEpisodeController::class, 'destroy'])->name('episodes.destroy');

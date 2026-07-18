@@ -89,9 +89,8 @@
                 @endif
 
                 {{-- Stats --}}
-                <div class="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-4">
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
                     @foreach ([
-                        ['label' => 'Chapters',   'value' => $audiobook->chapters->count(), 'color' => 'text-gray-900'],
                         ['label' => 'Episodes',   'value' => $totalEpisodes,                'color' => 'text-gray-900'],
                         ['label' => 'Listens',    'value' => number_format($audiobook->total_listens), 'color' => 'text-purple-700'],
                         ['label' => 'Hours',      'value' => $listenHours,                  'color' => 'text-green-700'],
@@ -133,86 +132,66 @@
                 </div>
             </div>
 
-            {{-- Chapters & Episodes --}}
+            {{-- Episodes --}}
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
                 <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                    <h4 class="font-semibold text-gray-900">Chapters & Episodes</h4>
-                    <span class="text-xs text-gray-400">{{ $audiobook->chapters->count() }} chapter(s) · {{ $totalEpisodes }} episode(s)
+                    <h4 class="font-semibold text-gray-900">Episodes</h4>
+                    <span class="text-xs text-gray-400">{{ $totalEpisodes }} episode(s)
                         @if($durationMin > 0) · {{ $durationMin }} min @endif
                     </span>
                 </div>
 
-                @forelse ($audiobook->chapters as $chapter)
-                <div class="border-b border-gray-50 last:border-b-0" x-data="{ open: true }">
-                    <div class="flex items-center gap-3 px-5 py-3 bg-gray-50/60 cursor-pointer hover:bg-gray-100 select-none" @click="open = !open">
-                        <span class="w-6 h-6 flex items-center justify-center bg-purple-100 text-purple-700 rounded-full text-xs font-bold shrink-0">{{ $chapter->order }}</span>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-semibold text-gray-800">{{ $chapter->title }}</p>
-                            @if ($chapter->description)
-                                <p class="text-xs text-gray-400 mt-0.5 line-clamp-1">{{ $chapter->description }}</p>
-                            @endif
-                        </div>
-                        <span class="text-xs text-gray-400 shrink-0">{{ $chapter->episodes->count() }} ep.</span>
-                        <svg class="w-4 h-4 text-gray-400 shrink-0 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                @forelse ($allEpisodes as $episode)
+                <div class="flex items-center gap-3 px-5 py-3 border-b border-gray-50 last:border-b-0 hover:bg-blue-50/20 group">
+                    @if ($episode->audio_path)
+                    <button type="button"
+                        onclick="playEpisode({ id: {{ $episode->id }}, title: {{ Js::from($episode->title) }}, bookTitle: {{ Js::from($audiobook->title) }}, url: '{{ route('episodes.play', $episode) }}', thumbnailUrl: {{ Js::from($audiobook->thumbnail_url) }} })"
+                        class="w-9 h-9 flex items-center justify-center rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 shrink-0 transition shadow-sm">
+                        <svg class="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+                    @else
+                    <div class="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 border-2 border-dashed border-gray-300 shrink-0">
+                        <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                     </div>
-                    <div x-show="open" x-transition>
-                        @forelse ($chapter->episodes as $episode)
-                        <div class="flex items-center gap-3 px-5 py-3 border-t border-gray-50 hover:bg-blue-50/20 group">
-                            @if ($episode->audio_path)
-                            <button type="button"
-                                onclick="playEpisode({ id: {{ $episode->id }}, title: {{ Js::from($episode->title) }}, bookTitle: {{ Js::from($audiobook->title) }}, url: '{{ route('episodes.play', $episode) }}', thumbnailUrl: {{ Js::from($audiobook->thumbnail_url) }} })"
-                                class="w-9 h-9 flex items-center justify-center rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 shrink-0 transition shadow-sm">
-                                <svg class="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                            </button>
-                            @else
-                            <div class="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 border-2 border-dashed border-gray-300 shrink-0">
-                                <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-                            </div>
-                            @endif
+                    @endif
 
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-gray-800 truncate">
-                                    <span class="text-gray-400 font-normal">{{ $episode->order }}.</span> {{ $episode->title }}
-                                </p>
-                                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                                    @if ($episode->is_preview)
-                                        <span class="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-medium">Preview</span>
-                                    @endif
-                                    {{-- Transcoding status badges --}}
-                                    @if ($episode->processing_status === 'queued')
-                                        <span class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1">
-                                            <svg class="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-dasharray="40" stroke-dashoffset="15" stroke-linecap="round"/></svg>
-                                            Queued
-                                        </span>
-                                    @elseif ($episode->processing_status === 'processing')
-                                        <span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1">
-                                            <svg class="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-dasharray="40" stroke-dashoffset="15" stroke-linecap="round"/></svg>
-                                            Optimising…
-                                        </span>
-                                    @elseif ($episode->processing_status === 'failed')
-                                        <span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">⚠ Transcode failed</span>
-                                    @else
-                                        <span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">✓ Ready</span>
-                                    @endif
-                                    @if ($episode->duration_seconds > 0)
-                                        <span class="text-xs text-gray-400">{{ $episode->duration_formatted }}</span>
-                                    @endif
-                                    @if ($episode->file_size)
-                                        <span class="text-xs text-gray-300">{{ round($episode->file_size / 1048576, 1) }} MB</span>
-                                    @endif
-                                    @if (! $episode->audio_path)
-                                        <span class="text-xs text-amber-500">No audio uploaded</span>
-                                    @endif
-                                </div>
-                            </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800 truncate">
+                            <span class="text-gray-400 font-normal">{{ $episode->order }}.</span> {{ $episode->title }}
+                        </p>
+                        <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                            @if ($episode->is_preview)
+                                <span class="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-medium">Preview</span>
+                            @endif
+                            @if ($episode->processing_status === 'queued')
+                                <span class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1">
+                                    <svg class="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-dasharray="40" stroke-dashoffset="15" stroke-linecap="round"/></svg>
+                                    Queued
+                                </span>
+                            @elseif ($episode->processing_status === 'processing')
+                                <span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1">
+                                    <svg class="w-2.5 h-2.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-dasharray="40" stroke-dashoffset="15" stroke-linecap="round"/></svg>
+                                    Optimising…
+                                </span>
+                            @elseif ($episode->processing_status === 'failed')
+                                <span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">⚠ Transcode failed</span>
+                            @else
+                                <span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">✓ Ready</span>
+                            @endif
+                            @if ($episode->duration_seconds > 0)
+                                <span class="text-xs text-gray-400">{{ $episode->duration_formatted }}</span>
+                            @endif
+                            @if ($episode->file_size)
+                                <span class="text-xs text-gray-300">{{ round($episode->file_size / 1048576, 1) }} MB</span>
+                            @endif
+                            @if (! $episode->audio_path)
+                                <span class="text-xs text-amber-500">No audio uploaded</span>
+                            @endif
                         </div>
-                        @empty
-                        <div class="px-5 py-4 text-center text-xs text-gray-400">No episodes in this chapter.</div>
-                        @endforelse
                     </div>
                 </div>
                 @empty
-                <div class="text-center py-10 text-sm text-gray-400">No chapters added yet.</div>
+                <div class="text-center py-10 text-sm text-gray-400">No episodes added yet.</div>
                 @endforelse
             </div>
 

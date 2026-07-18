@@ -62,6 +62,24 @@ class Audiobook extends Model
         return $this->hasManyThrough(Episode::class, Chapter::class);
     }
 
+    /**
+     * Product model is Book → Episodes. Chapters remain as a hidden
+     * one-per-book wrapper for FK / stream / cycle compatibility.
+     */
+    public function ensureDefaultChapter(): Chapter
+    {
+        $chapter = $this->chapters()->orderBy('order')->orderBy('id')->first();
+
+        if ($chapter) {
+            return $chapter;
+        }
+
+        return $this->chapters()->create([
+            'title' => 'Episodes',
+            'order' => 1,
+        ]);
+    }
+
     public function ratings(): HasMany
     {
         return $this->hasMany(Rating::class);

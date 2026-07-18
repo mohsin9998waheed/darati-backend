@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Artist;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\TranscodeAudioJob;
+use App\Models\Audiobook;
 use App\Models\Chapter;
 use App\Models\DeviceToken;
 use App\Models\Episode;
@@ -43,6 +44,17 @@ class EpisodeController extends Controller
             'post_max_size'       => ini_get('post_max_size'),
         ]);
         return $msg;
+    }
+
+    /**
+     * Preferred upload path: attach episode directly to the audiobook
+     * (uses the hidden default chapter wrapper).
+     */
+    public function storeForAudiobook(Request $request, Audiobook $audiobook): RedirectResponse
+    {
+        $this->authorize('update', $audiobook);
+
+        return $this->store($request, $audiobook->ensureDefaultChapter());
     }
 
     public function store(Request $request, Chapter $chapter): RedirectResponse

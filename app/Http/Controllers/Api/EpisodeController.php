@@ -4,29 +4,32 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\TranscodeAudioJob;
+use App\Models\Audiobook;
 use App\Models\Chapter;
 use App\Models\Episode;
 use App\Services\S3Service;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class EpisodeController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'chapter_id'  => ['required', 'exists:chapters,id'],
-            'title'       => ['required', 'string', 'max:200'],
-            'audio_file'  => [
+            'audiobook_id' => ['nullable', 'exists:audiobooks,id'],
+            'chapter_id'   => ['nullable', 'exists:chapters,id'],
+            'title'        => ['required', 'string', 'max:200'],
+            'audio_file'   => [
                 'required', 'file',
                 'mimes:mp3,mpeg,wav,ogg,m4a',
                 'mimetypes:audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/ogg,audio/mp4,audio/x-m4a,application/octet-stream',
                 'max:524288', // 512 MB
             ],
-            'is_preview'  => ['boolean'],
+            'is_preview'   => ['boolean'],
         ]);
 
-        $chapter = Chapter::findOrFail($data['chapter_id']);
+        $chapter = $this->resolveChapter($data);
         $this->authorize('update', $chapter->audiobook);
 
         $file   = $request->file('audio_file');
@@ -47,6 +50,28 @@ class EpisodeController extends Controller
         TranscodeAudioJob::dispatch($episode->id, $rawKey);
 
         return response()->json($episode, 201);
+    }
+
+    /**
+     * Prefer audiobook_id (new Book → Episodes flow); accept chapter_id for older clients.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveChapter(array $data): Chapter
+    {
+        if (! empty($data['audiobook_id'])) {
+            $audiobook = Audiobook::findOrFail($data['audiobook_id']);
+
+            return $audiobook->ensureDefaultChapter();
+        }
+
+        if (! empty($data['chapter_id'])) {
+            return Chapter::findOrFail($data['chapter_id']);
+        }
+
+        throw ValidationException::withMessages([
+            'audiobook_id' => 'Provide audiobook_id (preferred) or chapter_id.',
+        ]);
     }
 
     public function update(Request $request, Episode $episode): JsonResponse

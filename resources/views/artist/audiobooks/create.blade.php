@@ -5,7 +5,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <div class="mb-6">
             <h2 class="text-lg font-semibold text-gray-900">New Audiobook</h2>
-            <p class="text-sm text-gray-500 mt-1">Fill in the details below. After saving you can add chapters and episodes.</p>
+            <p class="text-sm text-gray-500 mt-1">Fill in the details below. After saving you can add episodes.</p>
         </div>
 
         @if ($errors->any())

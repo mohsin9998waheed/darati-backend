@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Artist;
 use App\Http\Controllers\Controller;
 use App\Models\Audiobook;
 use App\Models\Category;
+use App\Models\Chapter;
 use App\Services\S3Service;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,7 @@ class AudiobookController extends Controller
     {
         $audiobooks = Auth::user()->audiobooks()
             ->with('category')
-            ->withCount('chapters')
+            ->withCount('episodes')
             ->latest()
             ->paginate(15);
 
@@ -92,23 +93,33 @@ class AudiobookController extends Controller
         $data['status']    = 'pending';
 
         $audiobook = Audiobook::create($data);
+        $audiobook->ensureDefaultChapter();
 
         return redirect()->route('artist.audiobooks.show', $audiobook)
-            ->with('success', 'Audiobook created! Add chapters and episodes next.');
+            ->with('success', 'Audiobook created! Add episodes next.');
     }
 
     public function show(Audiobook $audiobook): View
     {
         $this->authorize('update', $audiobook);
+        $audiobook->ensureDefaultChapter();
         $audiobook->load('chapters.episodes', 'category');
         $audiobook->loadCount(['favorites', 'ratings', 'comments']);
-        $totalEpisodes = $audiobook->chapters->sum(fn ($c) => $c->episodes->count());
-        $totalDuration = $audiobook->chapters->sum(fn ($c) => $c->episodes->sum('duration_seconds'));
+        $allEpisodes = $audiobook->chapters
+            ->flatMap(fn (Chapter $c) => $c->episodes)
+            ->sortBy([
+                ['order', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values();
+        $totalEpisodes = $allEpisodes->count();
+        $totalDuration = $allEpisodes->sum('duration_seconds');
         $recentRatings = $audiobook->ratings()->with('user:id,name')->latest()->take(50)->get();
         $recentComments = $audiobook->comments()->with('user:id,name')->latest()->take(50)->get();
 
         return view('artist.audiobooks.show', compact(
             'audiobook',
+            'allEpisodes',
             'totalEpisodes',
             'totalDuration',
             'recentRatings',
